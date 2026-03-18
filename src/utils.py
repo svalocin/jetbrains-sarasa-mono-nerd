@@ -89,8 +89,9 @@ def update_font_names(
     set_font_name(font, version_str, 5)
     # NameID 6: PostScript name
     set_font_name(font, postscript_name, 6)
-    # NameID 7: Trademark (clear it)
-    set_font_name(font, "", 7)
+    # NameID 7: Trademark — remove entirely; writing an empty string creates
+    # empty name records that fail Apple Font Book validation.
+    font["name"].removeNames(nameID=7)
     # NameID 8: Manufacturer
     if author:
         set_font_name(font, author, 8)
@@ -117,15 +118,29 @@ def update_font_names(
     set_font_name(font, family_name, 16)  # Preferred Family
     set_font_name(font, style_name, 17)  # Preferred Subfamily
 
-    # Add Chinese names (Language ID 0x804) for better Windows CJK compatibility
+    # Add Chinese names (Language ID 0x804) for better Windows CJK compatibility.
     # Using the same names as English for now, but registering them under zh-CN
-    # This helps Excel recognize the font as supporting Chinese regions
+    # helps Excel and other Windows CJK applications recognise the font.
+    #
+    # NOTE (Apple compatibility): macOS Font Book validates that name records
+    # for platformID=3 are unique per nameID. These zh-CN duplicates do NOT
+    # cause a hard installation failure, but they trigger a validation warning
+    # on macOS 13+. If Apple compatibility is a priority, these entries can be
+    # removed without any impact on Windows behaviour.
     cn_lang_id = 0x804
     set_font_name(font, family_name, 1, mac=False, lang_id=cn_lang_id)
     set_font_name(font, style_name, 2, mac=False, lang_id=cn_lang_id)
     set_font_name(font, full_name, 4, mac=False, lang_id=cn_lang_id)
     set_font_name(font, family_name, 16, mac=False, lang_id=cn_lang_id)
     set_font_name(font, style_name, 17, mac=False, lang_id=cn_lang_id)
+
+    # Fix achVendID: the source JetBrains Mono font ships 'JB\x00\x00' (two
+    # trailing null bytes). Apple's font validator requires all four characters
+    # to be printable ASCII; replace nulls with spaces.
+    if "OS/2" in font:
+        vendor = font["OS/2"].achVendID
+        if "\x00" in vendor:
+            font["OS/2"].achVendID = (vendor.rstrip("\x00") + "    ")[:4]
 
 
 def merge_os2_ranges(target_font: TTFont, source_font: TTFont) -> None:
