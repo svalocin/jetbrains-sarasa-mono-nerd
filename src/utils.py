@@ -1,6 +1,6 @@
 """Utility functions for font manipulation."""
 
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 from fontTools.ttLib import TTFont
 
@@ -71,7 +71,7 @@ def update_font_names(
         license_desc: License description (NameID 13)
         license_url: License URL (NameID 14)
     """
-    unique_id = f"{version_str};JBLXGW;{postscript_name}"
+    unique_id = f"{version_str};JBSARASA;{postscript_name}"
 
     # English names (Language ID 0x409)
     # NameID 0: Copyright

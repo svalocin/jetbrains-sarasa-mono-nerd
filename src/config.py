@@ -1,4 +1,4 @@
-"""Font configuration for JetBrainsLxgwNerdMono."""
+"""Font configuration for JetBrains Sarasa Mono Nerd."""
 
 from dataclasses import dataclass
 from typing import Tuple
@@ -9,12 +9,12 @@ class FontConfig:
     """Configuration for font building."""
 
     # Font naming
-    family_name: str = "JetBrainsLxgwNerdMono"
-    family_name_compact: str = "JetBrainsLxgwNerdMono"
+    family_name: str = "JetBrains Sarasa Mono Nerd SC"
+    family_name_compact: str = "JetBrainsSarasaMonoNerdSC"
     version: str = "1.0"
 
-    # CJK visual scale factor (1.0 = no extra scaling, 1.08 = 8% larger)
-    visual_scale: float = 1.08
+    # CJK visual scale factor (1.0 = no extra scaling)
+    visual_scale: float = 1.0
 
     # Glyph width configuration (2:1 ratio)
     en_width: int = 600  # English character width

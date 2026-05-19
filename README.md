@@ -1,108 +1,107 @@
-# JetBrainsLxgwNerdMono
+# JetBrains Sarasa Mono Nerd
 
-[English](README.md) | [中文](README_zh.md)
+[中文](README_zh.md) | English
 
-JetBrains Mono NerdFont + LXGW WenKai Mono = 2:1 CJK Monospace Font
+JetBrains Sarasa Mono Nerd merges JetBrainsMono Nerd Font with Sarasa Mono CJK glyphs to create programming fonts with a strict 2:1 Latin/CJK monospace ratio.
+
+This project publishes two independent font families:
+
+- `JetBrains Sarasa Mono Nerd SC` for Simplified Chinese glyph forms.
+- `JetBrains Sarasa Mono Nerd TC` for Traditional Chinese glyph forms.
+
+The Latin, ASCII, and Nerd Font icons come from JetBrainsMono Nerd Font. CJK glyphs come from the regular hinted Sarasa Mono package. Unhinted Sarasa assets are not used.
+
+## Project Origin
+
+This repository is forked from [lvbibir/JetBrainsLxgwNerdMono](https://github.com/lvbibir/JetBrainsLxgwNerdMono).
+
+It also includes the work from [sspig0127](https://github.com/sspig0127)'s pull request [lvbibir/JetBrainsLxgwNerdMono#1](https://github.com/lvbibir/JetBrainsLxgwNerdMono/pull/1). This project then replaces the LXGW CJK source fonts with Sarasa Mono SC/TC and extends the release automation around the new font families.
 
 ## Features
 
-- English characters from JetBrains Mono NerdFont
-- CJK characters from LXGW WenKai Mono GB Screen (Regular/Medium) and LXGW ZhenKai GB (Bold)
-- NerdFont icons preserved and scaled to match CJK width
-  - Powerline symbols (U+E0A0-U+E0DF) maintain original vertical bounds for proper terminal alignment
-  - Regular icons scaled 1.4x and vertically centered
-- Perfect 2:1 width ratio (CJK 1200, English 600 FUnit)
-- Styles: Regular, Medium, Italic, MediumItalic, Bold, BoldItalic
-- YAML configuration support with CLI override
-- Multi-weight Chinese font mapping (optional)
+- Strict 2:1 width ratio: Latin glyphs use `600`, CJK glyphs use `1200`.
+- Nerd Font icons are widened to match CJK width.
+- Powerline symbols keep their vertical bounds for terminal alignment.
+- Six styles for each locale: `Regular`, `Medium`, `Italic`, `MediumItalic`, `Bold`, `BoldItalic`.
+- Separate SC and TC families, so users can install either or both.
+- Local and CI builds use the same upstream font preparation script.
 
-## Download
+## Installation
 
-### Quick Selection
+### Homebrew
 
-| Use Case | Download |
-|----------|----------|
-| 💻 **Local Install** (Editor/IDE/Terminal) | `JetBrainsLxgwNerdMono.zip` |
-| 🌐 **Web Usage** (Web Fonts) | `JetBrainsLxgwNerdMono-split-woff2.zip` |
-| 📄 **Single Weight Only** | Choose the corresponding `.ttf` file |
-
-### File Description
-
-#### `JetBrainsLxgwNerdMono.zip`
-> **Recommended for most users**
-
-Contains 6 complete TTF font files with all weights, suitable for:
-- ✅ VSCode / JetBrains IDE / Sublime Text and other editors
-- ✅ Windows Terminal / iTerm2 / Alacritty and other terminals
-- ✅ System-wide installation
-
-Included weights: Regular, Medium, Italic, MediumItalic, Bold, BoldItalic
-
-#### `JetBrainsLxgwNerdMono-split-woff2.zip`
-> **For Web developers**
-
-WOFF2 format optimized with [cn-font-split](https://github.com/KonghaYao/cn-font-split), suitable for:
-- ✅ Website/blog `@font-face` references
-- ✅ On-demand loading of CJK character subsets
-- ✅ Web projects requiring optimal loading performance
-
-Includes `all.css` for importing all weights at once
-
-#### Single Font Files (`.ttf`)
-
-If you only need a specific weight, download the corresponding file directly:
-
-| File | Weight | Use Case |
-|------|--------|----------|
-| `JetBrainsLxgwNerdMono-Regular.ttf` | Regular | Daily coding (Recommended) |
-| `JetBrainsLxgwNerdMono-Medium.ttf` | Medium | Prefer slightly bolder font |
-| `JetBrainsLxgwNerdMono-Bold.ttf` | Bold | Headings/emphasis |
-| `JetBrainsLxgwNerdMono-Italic.ttf` | Italic | Comments/variables |
-| `JetBrainsLxgwNerdMono-MediumItalic.ttf` | Medium Italic | - |
-| `JetBrainsLxgwNerdMono-BoldItalic.ttf` | Bold Italic | - |
-
-## Quick Start
-
-### Using uv (Recommended)
+Install SC:
 
 ```bash
-# Install dependencies
+brew tap svalocin/fonts
+brew install --cask font-jetbrains-sarasa-mono-nerd-sc
+```
+
+Install TC:
+
+```bash
+brew tap svalocin/fonts
+brew install --cask font-jetbrains-sarasa-mono-nerd-tc
+```
+
+Install only the locale you need, or install both casks.
+
+### Manual
+
+Download from GitHub Releases:
+
+- `JetBrainsSarasaMonoNerdSC-<version>.zip`: six SC TTF files.
+- `JetBrainsSarasaMonoNerdTC-<version>.zip`: six TC TTF files.
+- Individual TTF files are also attached to each release.
+
+After installation, select `JetBrains Sarasa Mono Nerd SC` or `JetBrains Sarasa Mono Nerd TC` in your editor or terminal.
+
+## Font Mapping
+
+| Output style | JetBrainsMono Nerd source | Sarasa SC CJK source | Sarasa TC CJK source |
+| --- | --- | --- | --- |
+| `Regular` | `JetBrainsMonoNLNerdFontMono-Regular.ttf` | `SarasaMonoSC-Regular.ttf` | `SarasaMonoTC-Regular.ttf` |
+| `Medium` | `JetBrainsMonoNLNerdFontMono-Medium.ttf` | `SarasaMonoSC-SemiBold.ttf` | `SarasaMonoTC-SemiBold.ttf` |
+| `Italic` | `JetBrainsMonoNLNerdFontMono-Italic.ttf` | `SarasaMonoSC-Italic.ttf` | `SarasaMonoTC-Italic.ttf` |
+| `MediumItalic` | `JetBrainsMonoNLNerdFontMono-MediumItalic.ttf` | `SarasaMonoSC-SemiBoldItalic.ttf` | `SarasaMonoTC-SemiBoldItalic.ttf` |
+| `Bold` | `JetBrainsMonoNLNerdFontMono-Bold.ttf` | `SarasaMonoSC-Bold.ttf` | `SarasaMonoTC-Bold.ttf` |
+| `BoldItalic` | `JetBrainsMonoNLNerdFontMono-BoldItalic.ttf` | `SarasaMonoSC-BoldItalic.ttf` | `SarasaMonoTC-BoldItalic.ttf` |
+
+## Local Build
+
+Install Python dependencies:
+
+```bash
 uv sync
-
-# Build all styles
-uv run python build.py
-
-# Font Splitting (Web Fonts)
-# Default input: output/fonts, output: output/split
-uv run python split.py
 ```
 
-### Using Docker
+Prepare source fonts:
 
 ```bash
-# Build image
-docker build -t jetbrains-lxgw-nerd-mono .
-
-# Run build
-docker run --rm \
-    -v $(pwd)/fonts:/app/fonts \
-    -v $(pwd)/output:/app/output \
-    jetbrains-lxgw-nerd-mono
-
-# Build specific styles
-docker run --rm \
-    -v $(pwd)/fonts:/app/fonts \
-    -v $(pwd)/output:/app/output \
-    jetbrains-lxgw-nerd-mono --styles Regular,Medium
+scripts/fetch-upstream-fonts.sh build/source-fonts build/cache/upstream-fonts
 ```
 
-## Source Fonts
+Build all SC and TC fonts:
 
-Place the following fonts in the `fonts/` directory:
+```bash
+uv run python build.py --parallel 6
+```
 
-### JetBrains Mono NerdFont (v3.4.0)
+Generated TTF files and `fonts-manifest.json` are written to `build/fonts/` by default.
 
-Download from [Nerd Fonts release](https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip), extract and place these files:
+Override the version metadata:
+
+```bash
+uv run python build.py --version 2026.05.18-031700 --parallel 6
+```
+
+Use another source font directory:
+
+```bash
+uv run python build.py --fonts-dir /path/to/fonts --output-dir build/fonts --parallel 6
+```
+
+The source font directory must contain:
 
 - `JetBrainsMonoNLNerdFontMono-Regular.ttf`
 - `JetBrainsMonoNLNerdFontMono-Medium.ttf`
@@ -110,205 +109,55 @@ Download from [Nerd Fonts release](https://github.com/ryanoasis/nerd-fonts/relea
 - `JetBrainsMonoNLNerdFontMono-MediumItalic.ttf`
 - `JetBrainsMonoNLNerdFontMono-Bold.ttf`
 - `JetBrainsMonoNLNerdFontMono-BoldItalic.ttf`
+- `SarasaMonoSC-Regular.ttf`
+- `SarasaMonoSC-SemiBold.ttf`
+- `SarasaMonoSC-Italic.ttf`
+- `SarasaMonoSC-SemiBoldItalic.ttf`
+- `SarasaMonoSC-Bold.ttf`
+- `SarasaMonoSC-BoldItalic.ttf`
+- `SarasaMonoTC-Regular.ttf`
+- `SarasaMonoTC-SemiBold.ttf`
+- `SarasaMonoTC-Italic.ttf`
+- `SarasaMonoTC-SemiBoldItalic.ttf`
+- `SarasaMonoTC-Bold.ttf`
+- `SarasaMonoTC-BoldItalic.ttf`
 
-### LXGW WenKai Mono GB Screen (v1.521)
+## Verification
 
-Download directly: [LXGWWenKaiMonoGBScreen.ttf](https://github.com/lxgw/LxgwWenKai-Screen/releases/download/v1.521/LXGWWenKaiMonoGBScreen.ttf)
+The build fails if any glyph advance width is outside `0`, `600`, or `1200`.
 
-- `LXGWWenKaiMonoGBScreen.ttf` - Used for Regular/Italic/Medium/MediumItalic styles
+## Release Workflow
 
-### LXGW ZhenKai GB (for Bold weights)
+The main workflow is `.github/workflows/build-release.yml`.
 
-Download directly: [LXGWZhenKaiGB-Regular.ttf](https://github.com/lxgw/LxgwZhenKai/releases)
+It checks upstream releases for:
 
-- `LXGWZhenKaiGB-Regular.ttf` - Used for Bold/BoldItalic styles to provide heavier CJK strokes
+- Nerd Fonts `JetBrainsMono.zip`
+- Sarasa Gothic `SarasaMono` regular hinted TTF zip
 
-## Output
+When either upstream changes, CI builds 12 TTF files, publishes individual TTF assets, and creates two zip bundles:
 
-- Generated fonts are saved to `output/fonts/`.
-- Split web fonts are saved to `output/split/`.
+- `JetBrainsSarasaMonoNerdSC-<version>.zip`
+- `JetBrainsSarasaMonoNerdTC-<version>.zip`
 
-## Font Splitting (Web Fonts)
+`.github/workflows/homebrew-publish.yml` publishes two casks to `svalocin/homebrew-fonts`.
 
-The project includes a `split.py` script that uses [cn-font-split](https://github.com/KonghaYao/cn-font-split) to split fonts into woff2 subsets for web delivery:
+## Acknowledgements
 
-```bash
-# Install cn-font-split (requires Node.js)
-npm install -g cn-font-split
+This project exists because of the work of these upstream projects:
 
-# Run split script (processes all fonts in output/fonts)
-uv run python split.py
-
-# Custom directories
-uv run python split.py --input-dir my_fonts --output-dir my_split_fonts
-```
-
-Output structure:
-
-```
-output/split/
-├── all.css                  # Merged CSS importing all fonts
-├── JetBrainsLxgwNerdMono-Regular/
-│   ├── result.css           # Single font CSS
-│   ├── index.html           # Test page (contains splitting report)
-│   └── *.woff2              # Font subsets
-└── ...
-```
-
-After splitting, you can open `output/split/<FontName>/index.html` to view the splitting report and preview the font.
-
-> **Note**: Due to browser CORS policies, directly opening `index.html` may fail to load font files or JSON reports. Please use a local HTTP server:
->
-> ```bash
-> uv run python -m http.server 8000
-> # Visit http://localhost:8000/output/split/<FontName>/index.html
-> ```
-
-## 2:1 Ratio Verification
-
-To verify the perfect 2:1 width ratio between CJK and English characters:
-
-```bash
-# Open verification page in browser
-uv run python -m http.server 8000
-# Then visit http://localhost:8000/verify-2-1.html
-```
-
-The verification page supports switching between different font weights using the dropdown menu.
-
-For split web fonts, please visit `http://localhost:8000/verify-2-1-split.html`.
-
-Or simply open `verify-2-1.html` directly in your browser after building the fonts.
-
-![2:1 Ratio Verification](resources/2-1.png)
-
-The vertical bars (`|`) should align perfectly across all lines, demonstrating that each CJK character occupies exactly twice the width of an English character.
-
-## Command Line Options
-
-### Build Script (build.py)
-
-```
-usage: build.py [-h] [--config CONFIG] [--styles STYLES] [--fonts-dir FONTS_DIR]
-                [--output-dir OUTPUT_DIR] [--parallel PARALLEL]
-
-options:
-  --config CONFIG         Path to config.yaml (default: config.yaml)
-  --styles STYLES         Comma-separated styles (default: from config)
-  --fonts-dir FONTS_DIR   Source fonts directory (default: fonts/)
-  --output-dir OUTPUT_DIR Output directory (default: output/fonts/)
-  --parallel PARALLEL     Parallel workers (default: 1)
-```
-
-Configuration priority: CLI args > config.yaml > defaults
-
-## Configuration
-
-The `config.yaml` file provides centralized configuration for the build process:
-
-```yaml
-# Font metadata
-font:
-  family_name: "JetBrainsLxgwNerdMono"
-  version: "1.3"
-  author: "lvbibir"
-  copyright: "Copyright (c) 2024 lvbibir"
-  description: "JetBrains Mono NerdFont + LXGW WenKai Mono merged font with 2:1 CJK ratio."
-  url: "https://github.com/lvbibir/JetBrainsLxgwNerdMono"
-  license: "This font is licensed under the SIL Open Font License, Version 1.1."
-  license_url: "https://openfontlicense.org"
-
-# Source fonts directory
-fonts_dir: "fonts"
-
-# Styles configuration
-styles:
-  Regular:
-    en_font: "JetBrainsMonoNLNerdFontMono-Regular.ttf"
-    cn_font: "LXGWWenKaiMonoGBScreen.ttf"
-    display_name: "Regular"
-  # ... other styles
-
-# Build options
-build:
-  styles: "Regular,Medium,Italic,MediumItalic,Bold,BoldItalic"
-  output_dir: "output/fonts"
-  parallel: 6
-
-# Glyph width configuration (2:1 ratio)
-width:
-  en_width: 600
-  cn_width: 1200
-  # CJK visual scale factor (1.0 = no extra scaling, 1.08 = 8% larger)
-  visual_scale: 1.08
-```
-
-### Multi-Weight Chinese Font Example
-
-For Chinese fonts with multiple weights, specify different `cn_font` for each style:
-
-```yaml
-styles:
-  Regular:
-    en_font: "JetBrainsMonoNLNerdFontMono-Regular.ttf"
-    cn_font: "LXGWWenKaiMonoGBScreen-Regular.ttf"
-    display_name: "Regular"
-  Medium:
-    en_font: "JetBrainsMonoNLNerdFontMono-Medium.ttf"
-    cn_font: "LXGWWenKaiMonoGBScreen-Medium.ttf"
-    display_name: "Medium"
-  Bold:
-    en_font: "JetBrainsMonoNLNerdFontMono-Bold.ttf"
-    cn_font: "LXGWWenKaiMonoGBScreen-Medium.ttf"  # Fallback to Medium
-    display_name: "Bold"
-```
-
-### Split Script (split.py)
-
-```
-usage: split.py [-h] [--input-dir INPUT_DIR] [--output-dir OUTPUT_DIR]
-
-options:
-  --input-dir INPUT_DIR   Input directory containing font files (default: output/fonts)
-  --output-dir OUTPUT_DIR Output directory for split fonts (default: output/split)
-```
-
-## Project Structure
-
-```
-.
-├── fonts/                  # Source fonts
-├── output/                 # Output directory
-│   ├── fonts/              # Generated TTF fonts
-│   │   └── fonts-manifest.json  # Font metadata for verification pages
-│   └── split/              # Generated Web fonts (WOFF2)
-├── src/
-│   ├── __init__.py
-│   ├── config.py           # Font configuration
-│   ├── merge.py            # Core merge logic
-│   └── utils.py            # Utility functions
-├── build.py                # Main build script
-├── split.py                # Font splitting script
-├── config.yaml             # Build configuration
-├── pyproject.toml          # Python project config
-├── Dockerfile              # Docker build
-└── README.md
-```
-
-## Acknowledgments
-
-- [maple-font](https://github.com/subframe7536/maple-font): Implementation reference and inspiration
-- [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts): Developer icons
-- [LXGW WenKai](https://github.com/lxgw/LxgwWenKai): Source CJK font for Regular/Medium weights
-- [LXGW ZhenKai](https://github.com/lxgw/LxgwZhenKai): Source CJK font for Bold weights
-- [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono): Source English font
-- [cn-font-split](https://github.com/KonghaYao/cn-font-split): Web font splitting tool
+- [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), the Latin programming font foundation.
+- [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts), which provides the patched JetBrainsMono Nerd Font package.
+- [Sarasa Gothic](https://github.com/be5invis/Sarasa-Gothic), which provides the Sarasa Mono SC and TC CJK glyphs.
+- [lvbibir/JetBrainsLxgwNerdMono](https://github.com/lvbibir/JetBrainsLxgwNerdMono), the upstream project this repository is forked from.
+- [sspig0127](https://github.com/sspig0127), whose pull request [lvbibir/JetBrainsLxgwNerdMono#1](https://github.com/lvbibir/JetBrainsLxgwNerdMono/pull/1) is included in this fork.
 
 ## License
 
-This project is for personal use. Please check the licenses of the source fonts:
+This repository follows the licenses of its source fonts and tools:
 
 - JetBrains Mono: OFL-1.1
-- LXGW WenKai: OFL-1.1
-- LXGW ZhenKai: OFL-1.1
+- Sarasa Gothic: OFL-1.1
 - Nerd Fonts: MIT
+
+Refer to each upstream project for authoritative license text.

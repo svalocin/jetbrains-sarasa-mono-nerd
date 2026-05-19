@@ -1,6 +1,6 @@
-"""Core font merging logic for JetBrainsLxgwNerdMono."""
+"""Core font merging logic for JetBrains Sarasa Mono Nerd."""
 
-from typing import Set
+from copy import deepcopy
 
 from fontTools.ttLib import TTFont
 
@@ -8,46 +8,66 @@ from .config import FontConfig
 from .utils import is_cjk_codepoint, merge_os2_ranges
 
 
-def get_cjk_glyphs(font: TTFont, config: FontConfig) -> Set[str]:
-    """Get all CJK glyph names from a font.
-
-    Args:
-        font: TTFont object
-        config: FontConfig with CJK ranges
-
-    Returns:
-        Set of glyph names that are CJK characters
-    """
-    cjk_glyphs = set()
-    cmap = font["cmap"].getBestCmap()
-
-    if cmap:
-        for codepoint, glyph_name in cmap.items():
-            if is_cjk_codepoint(codepoint, config.cjk_ranges):
-                cjk_glyphs.add(glyph_name)
-
-    return cjk_glyphs
+def get_cjk_cmap_entries(font: TTFont, config: FontConfig) -> dict[int, str]:
+    """Get CJK cmap entries ordered by codepoint."""
+    cmap = font["cmap"].getBestCmap() or {}
+    return {
+        codepoint: glyph_name
+        for codepoint, glyph_name in sorted(cmap.items())
+        if is_cjk_codepoint(codepoint, config.cjk_ranges)
+    }
 
 
-def get_cjk_cmap_entries(font: TTFont, config: FontConfig) -> dict:
-    """Get cmap entries for CJK codepoints.
+def get_cjk_glyphs(font: TTFont, config: FontConfig) -> list[str]:
+    """Get unique CJK glyph names from a font in deterministic order."""
+    glyphs = []
+    seen = set()
 
-    Args:
-        font: TTFont object
-        config: FontConfig with CJK ranges
+    for glyph_name in get_cjk_cmap_entries(font, config).values():
+        if glyph_name not in seen:
+            glyphs.append(glyph_name)
+            seen.add(glyph_name)
 
-    Returns:
-        Dict mapping codepoint -> glyph_name for CJK characters
-    """
-    entries = {}
-    cmap = font["cmap"].getBestCmap()
+    return glyphs
 
-    if cmap:
-        for codepoint, glyph_name in cmap.items():
-            if is_cjk_codepoint(codepoint, config.cjk_ranges):
-                entries[codepoint] = glyph_name
 
-    return entries
+def _scale_glyph(glyph, glyf_table, scale: float) -> None:
+    """Scale a simple glyph or composite glyph offsets in place."""
+    if glyph.numberOfContours > 0 and hasattr(glyph, "coordinates"):
+        if not hasattr(glyph, "xMin") or glyph.xMin is None:
+            glyph.recalcBounds(glyf_table)
+
+        glyph.coordinates.scale((scale, scale))
+        glyph.recalcBounds(glyf_table)
+        return
+
+    if glyph.isComposite():
+        for component in glyph.components:
+            if hasattr(component, "x"):
+                component.x = int(round(component.x * scale))
+            if hasattr(component, "y"):
+                component.y = int(round(component.y * scale))
+        glyph.recalcBounds(glyf_table)
+
+
+def _translate_glyph(glyph, glyf_table, dx: int, dy: int) -> bool:
+    """Translate simple glyph coordinates or XY-offset composite components."""
+    if glyph.numberOfContours > 0 and hasattr(glyph, "coordinates"):
+        glyph.coordinates.translate((dx, dy))
+        glyph.recalcBounds(glyf_table)
+        return True
+
+    if glyph.isComposite():
+        if any(hasattr(component, "firstPt") for component in glyph.components):
+            return False
+
+        for component in glyph.components:
+            component.x = int(round(component.x + dx))
+            component.y = int(round(component.y + dy))
+        glyph.recalcBounds(glyf_table)
+        return True
+
+    return False
 
 
 def merge_fonts(
@@ -61,12 +81,12 @@ def merge_fonts(
     - English characters
     - NerdFont icons
 
-    The CN font (LXGW WenKai Mono) provides:
+    The CJK font (Sarasa Mono SC/TC) provides:
     - CJK characters
 
     Args:
         base_font_path: Path to JetBrains Mono NerdFont
-        cn_font_path: Path to LXGW WenKai Mono
+        cn_font_path: Path to Sarasa Mono SC/TC
         config: FontConfig object
 
     Returns:
@@ -77,12 +97,14 @@ def merge_fonts(
     print(f"  Loading CN font: {cn_font_path}")
     cn_font = TTFont(cn_font_path)
 
-    # Get existing glyphs in base font (to avoid overwriting)
+    # CJK glyphs from Sarasa may overwrite same-named base glyphs so fullwidth
+    # punctuation keeps the 2:1 width. Non-CJK component collisions are renamed
+    # to avoid replacing Latin glyphs used by JetBrains Mono.
     base_glyph_names = set(base_font.getGlyphOrder())
 
-    # Get CJK glyphs and cmap entries from CN font
-    cjk_glyphs = get_cjk_glyphs(cn_font, config)
     cjk_cmap = get_cjk_cmap_entries(cn_font, config)
+    cjk_glyphs = list(dict.fromkeys(cjk_cmap.values()))
+    primary_glyphs = set(cjk_glyphs)
 
     print(f"  Found {len(cjk_glyphs)} CJK glyphs in CN font")
 
@@ -91,86 +113,124 @@ def merge_fonts(
     cn_glyf = cn_font["glyf"]
     base_hmtx = base_font["hmtx"]
     cn_hmtx = cn_font["hmtx"]
-    base_cmap = base_font["cmap"].getBestCmap()
 
-    # Calculate scaling factors
     base_upm = base_font["head"].unitsPerEm
     cn_upm = cn_font["head"].unitsPerEm
 
-    # UPM normalization scale with visual adjustment
-    # visual_scale adjusts the final glyph size (1.08 = 8% larger)
-    upm_scale = base_upm / cn_upm  # e.g., 1000 / 2048 = 0.4883
+    upm_scale = base_upm / cn_upm
     combined_scale = upm_scale * config.visual_scale
-    print(f"  Scaling CN glyphs by {combined_scale:.4f} (UPM: {cn_upm} -> {base_upm}, visual: {config.visual_scale:.2f}x)")
+    print(
+        f"  Scaling CN glyphs by {combined_scale:.4f} "
+        f"(UPM: {cn_upm} -> {base_upm}, visual: {config.visual_scale:.2f}x)"
+    )
 
     glyphs_added = []
+    glyphs_processed = []
+    copied_targets = set()
+    copying_sources = set()
+    renamed_components = {}
+
+    def target_name_for(glyph_name: str) -> str:
+        if glyph_name in primary_glyphs or glyph_name not in base_glyph_names:
+            return glyph_name
+
+        if glyph_name not in renamed_components:
+            base_candidate = f"sarasa.{glyph_name}"
+            candidate = base_candidate
+            index = 1
+            while (
+                candidate in base_glyf.glyphs
+                or candidate in cn_glyf.glyphs
+                or candidate in copied_targets
+            ):
+                candidate = f"sarasa{index}.{glyph_name}"
+                index += 1
+            renamed_components[glyph_name] = candidate
+
+        return renamed_components[glyph_name]
+
+    def copy_cn_glyph(glyph_name: str) -> str | None:
+        if glyph_name not in cn_glyf.glyphs:
+            return None
+
+        target_name = target_name_for(glyph_name)
+        if target_name in copied_targets:
+            return target_name
+        if glyph_name in copying_sources:
+            raise ValueError(f"Recursive composite glyph reference: {glyph_name}")
+
+        copying_sources.add(glyph_name)
+        try:
+            source_glyph = cn_glyf[glyph_name]
+            component_targets = {}
+            if source_glyph.isComposite():
+                for component_name in source_glyph.getComponentNames(cn_glyf):
+                    component_target = copy_cn_glyph(component_name)
+                    if component_target is None:
+                        raise ValueError(
+                            f"Composite glyph '{glyph_name}' references missing "
+                            f"component '{component_name}'"
+                        )
+                    component_targets[component_name] = component_target
+
+            glyph = deepcopy(source_glyph)
+            if glyph.isComposite():
+                for component in glyph.components:
+                    component.glyphName = component_targets[component.glyphName]
+
+            base_glyf.glyphs[target_name] = glyph
+            _scale_glyph(glyph, base_glyf, combined_scale)
+
+            _, orig_lsb = cn_hmtx.metrics.get(glyph_name, (0, 0))
+            scaled_lsb = int(round(orig_lsb * combined_scale))
+            if glyph_name in primary_glyphs:
+                base_hmtx.metrics[target_name] = (config.cn_width, scaled_lsb)
+            elif target_name not in base_hmtx.metrics:
+                base_hmtx.metrics[target_name] = (0, scaled_lsb)
+
+            copied_targets.add(target_name)
+            if target_name not in base_glyph_names:
+                glyphs_added.append(target_name)
+        finally:
+            copying_sources.remove(glyph_name)
+
+        return target_name
 
     for glyph_name in cjk_glyphs:
-        # Skip if glyph already exists in base font
-        if glyph_name in base_glyph_names:
+        target_name = copy_cn_glyph(glyph_name)
+        if target_name is None:
             continue
 
-        # Skip if glyph doesn't exist in cn font's glyf table
-        if glyph_name not in cn_glyf.glyphs:
-            continue
-
-        # Copy glyph outline (deep copy to avoid modifying source font)
-        # IMPORTANT: Use cn_glyf[name] instead of cn_glyf.glyphs[name]
-        # The latter returns undecompiled glyph without coordinates attribute
-        import copy
-        glyph = copy.deepcopy(cn_glyf[glyph_name])
-        base_glyf.glyphs[glyph_name] = glyph
-
-        # Scale glyph to fit target width
-        if hasattr(glyph, "coordinates") and glyph.numberOfContours > 0:
-            # Ensure bounds are calculated before scaling
-            if not hasattr(glyph, 'xMin') or glyph.xMin is None:
-                glyph.recalcBounds(base_glyf)
-
-            # Apply combined scaling
-            glyph.coordinates.scale((combined_scale, combined_scale))
-            glyph.recalcBounds(base_glyf)
-
-        # Set advance width to cn_width (1200) for 2:1 ratio
-        # Preserve original LSB ratio for proper glyph positioning
-        orig_width, orig_lsb = cn_hmtx[glyph_name]
-        scaled_lsb = int(orig_lsb * combined_scale)
-        base_hmtx.metrics[glyph_name] = (config.cn_width, scaled_lsb)
-
-        glyphs_added.append(glyph_name)
+        glyphs_processed.append(target_name)
 
     print(f"  Added {len(glyphs_added)} new glyphs")
+    print(f"  Processed {len(glyphs_processed)} CJK glyphs")
+    if renamed_components:
+        print(f"  Renamed {len(renamed_components)} component glyphs")
 
-    if not glyphs_added:
-        cn_font.close()
-        return base_font
+    if glyphs_added:
+        new_glyph_order = base_font.getGlyphOrder() + glyphs_added
+        base_font.setGlyphOrder(new_glyph_order)
+        base_font["maxp"].numGlyphs = len(new_glyph_order)
 
-    # Update glyph order
-    new_glyph_order = base_font.getGlyphOrder() + glyphs_added
-    base_font.setGlyphOrder(new_glyph_order)
-    base_font["maxp"].numGlyphs = len(new_glyph_order)
-
-    # Update cmap with new glyphs
     # IMPORTANT: Must update all cmap subtables, not just getBestCmap()
     # Office applications may only read format=4 table for BMP characters
-    glyphs_added_set = set(glyphs_added)
+    glyphs_processed_set = set(glyphs_processed)
     for table in base_font["cmap"].tables:
         # Only update tables that map Unicode codepoints
-        if table.platformID == 3 and table.platEncID in (1, 10):  # Windows Unicode BMP/Full
+        if table.platformID == 3 and table.platEncID in (1, 10):
             for codepoint, glyph_name in cjk_cmap.items():
-                if glyph_name in glyphs_added_set:
+                if glyph_name in glyphs_processed_set:
                     # format=4 only supports BMP (U+0000-U+FFFF)
                     if table.format == 4 and codepoint > 0xFFFF:
                         continue
-                    if codepoint not in table.cmap:
-                        table.cmap[codepoint] = glyph_name
+                    table.cmap[codepoint] = glyph_name
         elif table.platformID == 0:  # Unicode platform
             for codepoint, glyph_name in cjk_cmap.items():
-                if glyph_name in glyphs_added_set:
+                if glyph_name in glyphs_processed_set:
                     if table.format == 4 and codepoint > 0xFFFF:
                         continue
-                    if codepoint not in table.cmap:
-                        table.cmap[codepoint] = glyph_name
+                    table.cmap[codepoint] = glyph_name
 
     # Update hhea table
     if "hhea" in base_font:
@@ -244,7 +304,7 @@ def scale_nerd_icons(font: TTFont, config: FontConfig) -> None:
             continue
 
         # Get current metrics
-        width, lsb = hmtx[glyph_name]
+        width, _ = hmtx[glyph_name]
         if width != config.en_width:
             continue  # Skip if not standard English width
 
@@ -377,10 +437,10 @@ def center_cjk_glyphs(font: TTFont, config: FontConfig) -> None:
             continue
 
         glyph = glyf[glyph_name]
-        if glyph.numberOfContours <= 0:
+        if glyph.numberOfContours == 0:
             continue
 
-        width, lsb = hmtx[glyph_name]
+        width, _ = hmtx[glyph_name]
         if width != config.cn_width:
             continue
 
@@ -399,9 +459,7 @@ def center_cjk_glyphs(font: TTFont, config: FontConfig) -> None:
             # Left punctuation (opening): align to right side
             ideal_lsb = config.cn_width - glyph_width
             delta = ideal_lsb - glyph.xMin
-            if abs(delta) > 1:
-                glyph.coordinates.translate((delta, 0))
-                glyph.recalcBounds(glyf)
+            if abs(delta) > 1 and _translate_glyph(glyph, glyf, delta, 0):
                 hmtx[glyph_name] = (config.cn_width, ideal_lsb)
             paired_count += 1
             continue
@@ -410,9 +468,7 @@ def center_cjk_glyphs(font: TTFont, config: FontConfig) -> None:
             # Right punctuation (closing): align to left side
             ideal_lsb = 0
             delta = ideal_lsb - glyph.xMin
-            if abs(delta) > 1:
-                glyph.coordinates.translate((delta, 0))
-                glyph.recalcBounds(glyf)
+            if abs(delta) > 1 and _translate_glyph(glyph, glyf, delta, 0):
                 hmtx[glyph_name] = (config.cn_width, ideal_lsb)
             paired_count += 1
             continue
@@ -427,10 +483,11 @@ def center_cjk_glyphs(font: TTFont, config: FontConfig) -> None:
         ideal_lsb = (config.cn_width - glyph_width) // 2
         delta = ideal_lsb - glyph.xMin
 
-        if abs(delta) > 1:  # Only adjust if significant
-            glyph.coordinates.translate((delta, 0))
-            glyph.recalcBounds(glyf)
+        if abs(delta) > 1 and _translate_glyph(glyph, glyf, delta, 0):
             hmtx[glyph_name] = (config.cn_width, ideal_lsb)
             centered_count += 1
 
-    print(f"    Centered: {centered_count}, Paired punctuation: {paired_count}, Skipped (narrow): {skipped_count}")
+    print(
+        f"    Centered: {centered_count}, "
+        f"Paired punctuation: {paired_count}, Skipped (narrow): {skipped_count}"
+    )

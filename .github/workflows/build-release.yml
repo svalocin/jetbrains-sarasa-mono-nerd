@@ -1,0 +1,237 @@
+name: Build and Release Fonts
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Force rebuild and publish even when upstream versions did not change
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: build-release-fonts
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.decide.outputs.should_build }}
+      tag_name: ${{ steps.version.outputs.tag_name }}
+      nerd_tag: ${{ steps.upstream.outputs.nerd_tag }}
+      sarasa_tag: ${{ steps.upstream.outputs.sarasa_tag }}
+      nerd_url: ${{ steps.upstream.outputs.nerd_url }}
+      sarasa_url: ${{ steps.upstream.outputs.sarasa_url }}
+    steps:
+      - name: Resolve upstream versions
+        id: upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          nerd_tag=$(gh api repos/ryanoasis/nerd-fonts/releases/latest --jq '.tag_name')
+          sarasa_tag=$(gh api repos/be5invis/Sarasa-Gothic/releases/latest --jq '.tag_name')
+          nerd_url=$(gh api repos/ryanoasis/nerd-fonts/releases/latest --jq '.assets[] | select(.name == "JetBrainsMono.zip") | .browser_download_url')
+          sarasa_url=$(gh api repos/be5invis/Sarasa-Gothic/releases/latest --jq '.assets[] | select((.name | ascii_downcase | endswith(".zip")) and (.name | ascii_downcase | test("sarasa[-_]?mono")) and (.name | ascii_downcase | contains("ttf")) and ((.name | ascii_downcase | contains("unhinted")) | not)) | .browser_download_url' | head -n 1)
+
+          if [ -z "$nerd_url" ] || [ -z "$sarasa_url" ]; then
+            echo "ERROR: failed to resolve one or more upstream asset URLs" >&2
+            exit 1
+          fi
+
+          {
+            echo "nerd_tag=$nerd_tag"
+            echo "sarasa_tag=$sarasa_tag"
+            echo "nerd_url=$nerd_url"
+            echo "sarasa_url=$sarasa_url"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Nerd Fonts: $nerd_tag"
+          echo "Sarasa Gothic: $sarasa_tag"
+
+      - name: Read latest project release metadata
+        id: latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if gh release view --json body --jq '.body' > latest-release-body.md 2>/dev/null; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            awk '/^<!-- upstream-versions$/,/^-->$/' latest-release-body.md > latest-upstream.txt || true
+            cat latest-upstream.txt
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            : > latest-upstream.txt
+          fi
+
+          {
+            echo "body<<EOF"
+            cat latest-upstream.txt
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Decide whether to build
+        id: decide
+        env:
+          FORCE_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
+          LATEST_BODY: ${{ steps.latest.outputs.body }}
+          NERD_TAG: ${{ steps.upstream.outputs.nerd_tag }}
+          SARASA_TAG: ${{ steps.upstream.outputs.sarasa_tag }}
+        run: |
+          set -euo pipefail
+
+          should_build=false
+          reason="upstream versions unchanged"
+
+          if [ "$FORCE_RELEASE" = "true" ]; then
+            should_build=true
+            reason="force=true"
+          elif ! grep -Fq "nerd-fonts=$NERD_TAG" <<< "$LATEST_BODY"; then
+            should_build=true
+            reason="Nerd Fonts changed"
+          elif ! grep -Fq "sarasa-gothic=$SARASA_TAG" <<< "$LATEST_BODY"; then
+            should_build=true
+            reason="Sarasa Gothic changed"
+          fi
+
+          echo "should_build=$should_build" >> "$GITHUB_OUTPUT"
+          echo "$reason"
+
+      - name: Generate release tag
+        id: version
+        if: steps.decide.outputs.should_build == 'true'
+        run: |
+          set -euo pipefail
+          tag_name=$(date -u +'%Y.%m.%d-%H%M%S')
+          echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
+          echo "Release tag: $tag_name"
+
+  build_release:
+    runs-on: ubuntu-latest
+    needs: check
+    if: needs.check.outputs.should_build == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install zip tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y unzip zip
+
+      - name: Install Python dependencies
+        run: uv sync --no-dev
+
+      - name: Fetch upstream fonts
+        run: |
+          set -euo pipefail
+          scripts/fetch-upstream-fonts.sh \
+            build/source-fonts \
+            build/cache/upstream-fonts \
+            '${{ needs.check.outputs.nerd_url }}' \
+            '${{ needs.check.outputs.sarasa_url }}'
+
+      - name: Build fonts
+        run: |
+          set -euo pipefail
+          uv run python build.py \
+            --fonts-dir build/source-fonts \
+            --output-dir build/fonts \
+            --parallel 6 \
+            --version '${{ needs.check.outputs.tag_name }}'
+
+      - name: Package release assets
+        id: package
+        run: |
+          set -euo pipefail
+          mkdir -p build/release
+          bash .github/scripts/package-release-assets.sh \
+            '${{ needs.check.outputs.tag_name }}' \
+            build/fonts \
+            build/release > asset-files.txt
+
+          echo "Release assets:"
+          cat asset-files.txt
+
+          {
+            echo "files<<EOF"
+            cat asset-files.txt
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create release notes
+        run: |
+          set -euo pipefail
+          cat > release-notes.md <<EOF
+          Release ${{ needs.check.outputs.tag_name }} - JetBrains Sarasa Mono Nerd
+
+          This release includes JetBrains Sarasa Mono Nerd SC and TC.
+
+          Zip bundles:
+          - JetBrainsSarasaMonoNerdSC-${{ needs.check.outputs.tag_name }}.zip
+          - JetBrainsSarasaMonoNerdTC-${{ needs.check.outputs.tag_name }}.zip
+
+          Font files:
+          - JetBrainsSarasaMonoNerdSC-Regular.ttf
+          - JetBrainsSarasaMonoNerdSC-Medium.ttf
+          - JetBrainsSarasaMonoNerdSC-Italic.ttf
+          - JetBrainsSarasaMonoNerdSC-MediumItalic.ttf
+          - JetBrainsSarasaMonoNerdSC-Bold.ttf
+          - JetBrainsSarasaMonoNerdSC-BoldItalic.ttf
+          - JetBrainsSarasaMonoNerdTC-Regular.ttf
+          - JetBrainsSarasaMonoNerdTC-Medium.ttf
+          - JetBrainsSarasaMonoNerdTC-Italic.ttf
+          - JetBrainsSarasaMonoNerdTC-MediumItalic.ttf
+          - JetBrainsSarasaMonoNerdTC-Bold.ttf
+          - JetBrainsSarasaMonoNerdTC-BoldItalic.ttf
+
+          Upstream versions:
+          - Nerd Fonts: ${{ needs.check.outputs.nerd_tag }}
+          - Sarasa Gothic: ${{ needs.check.outputs.sarasa_tag }}
+
+          <!-- upstream-versions
+          nerd-fonts=${{ needs.check.outputs.nerd_tag }}
+          sarasa-gothic=${{ needs.check.outputs.sarasa_tag }}
+          -->
+          EOF
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.check.outputs.tag_name }}
+          name: ${{ needs.check.outputs.tag_name }}
+          body_path: release-notes.md
+          files: ${{ steps.package.outputs.files }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger Homebrew publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh api repos/${{ github.repository }}/dispatches \
+            --method POST \
+            --field event_type=homebrew-publish \
+            --field client_payload[tag_name]='${{ needs.check.outputs.tag_name }}'

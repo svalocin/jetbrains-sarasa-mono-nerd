@@ -1,0 +1,116 @@
+name: Publish Homebrew Casks
+
+on:
+  repository_dispatch:
+    types: [homebrew-publish]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Release tag to publish, for example 2026.05.18-031700
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish-homebrew:
+    runs-on: ubuntu-latest
+    env:
+      TAP_REPOSITORY: ${{ github.repository_owner }}/homebrew-fonts
+    steps:
+      - name: Checkout scripts
+        uses: actions/checkout@v5
+
+      - name: Resolve tag
+        id: vars
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_TAG_NAME: ${{ github.event.client_payload.tag_name }}
+          CLIENT_PAYLOAD: ${{ toJSON(github.event.client_payload) }}
+          MANUAL_TAG_NAME: ${{ github.event.inputs.tag_name }}
+        run: bash .github/scripts/resolve-tag.sh
+
+      - name: Generate casks
+        id: cask
+        run: |
+          set -euo pipefail
+          mkdir -p build/homebrew
+          cd build/homebrew
+
+          tag='${{ steps.vars.outputs.tag }}'
+          version='${{ steps.vars.outputs.pkgver }}'
+          repo='${{ github.repository }}'
+
+          generate_variant_cask() {
+            local variant="$1"
+            local token="$2"
+            local name="$3"
+            local desc="$4"
+            local asset="JetBrainsSarasaMonoNerd${variant}-${version}.zip"
+            local url="https://github.com/${repo}/releases/download/${tag}/${asset}"
+            local sha256
+
+            sha256=$(curl -fLs "$url" | sha256sum | cut -d' ' -f1)
+
+            bash "$GITHUB_WORKSPACE/.github/scripts/generate-homebrew-cask.sh" \
+              "$token" \
+              "$version" \
+              "$sha256" \
+              "$asset" \
+              "$name" \
+              "$desc" \
+              "$tag" \
+              "$repo" \
+              "JetBrainsSarasaMonoNerd${variant}-Regular.ttf" \
+              "JetBrainsSarasaMonoNerd${variant}-Medium.ttf" \
+              "JetBrainsSarasaMonoNerd${variant}-Italic.ttf" \
+              "JetBrainsSarasaMonoNerd${variant}-MediumItalic.ttf" \
+              "JetBrainsSarasaMonoNerd${variant}-Bold.ttf" \
+              "JetBrainsSarasaMonoNerd${variant}-BoldItalic.ttf"
+          }
+
+          generate_variant_cask \
+            SC \
+            font-jetbrains-sarasa-mono-nerd-sc \
+            'JetBrains Sarasa Mono Nerd SC' \
+            'JetBrains Mono Nerd Font merged with Sarasa Mono SC'
+
+          generate_variant_cask \
+            TC \
+            font-jetbrains-sarasa-mono-nerd-tc \
+            'JetBrains Sarasa Mono Nerd TC' \
+            'JetBrains Mono Nerd Font merged with Sarasa Mono TC'
+
+          echo "cask_dir=$PWD/Casks" >> "$GITHUB_OUTPUT"
+
+      - name: Update tap repository
+        env:
+          TAP_PUSH_TOKEN: ${{ secrets.HOMEBREW_TAP_PUSH_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${TAP_PUSH_TOKEN:-}" ]; then
+            echo "ERROR: HOMEBREW_TAP_PUSH_TOKEN is required" >&2
+            exit 1
+          fi
+
+          tmpdir=$(mktemp -d)
+          trap 'rm -rf "$tmpdir"' EXIT
+
+          git clone "https://x-access-token:${TAP_PUSH_TOKEN}@github.com/${TAP_REPOSITORY}.git" "$tmpdir/tap"
+          mkdir -p "$tmpdir/tap/Casks"
+          cp "${{ steps.cask.outputs.cask_dir }}"/*.rb "$tmpdir/tap/Casks/"
+
+          cd "$tmpdir/tap"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if [ -z "$(git status --short -- Casks)" ]; then
+            echo "No tap changes detected."
+            exit 0
+          fi
+
+          git add Casks
+          git commit -m "chore: update JetBrains Sarasa Mono Nerd to ${{ steps.vars.outputs.tag }}"
+          git push origin HEAD

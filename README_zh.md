@@ -1,108 +1,107 @@
-# JetBrainsLxgwNerdMono
+# JetBrains Sarasa Mono Nerd
 
-[English](README.md) | [中文](README_zh.md)
+中文 | [English](README.md)
 
-JetBrains Mono NerdFont + LXGW WenKai Mono = 2:1 中英文等宽字体
+JetBrains Sarasa Mono Nerd 是一套把 JetBrainsMono Nerd Font 与 Sarasa Mono CJK 字形合并而成的编程字体，目标是严格保持中英文 1:2 等宽。
+
+本项目发布两个独立字体家族：
+
+- `JetBrains Sarasa Mono Nerd SC`：简体中文区域字形。
+- `JetBrains Sarasa Mono Nerd TC`：繁体中文区域字形。
+
+英文、ASCII 和 Nerd Font 图标来自 JetBrainsMono Nerd Font。CJK 字形来自 Sarasa Mono 普通 hinted 包。本项目不使用 Unhinted 版本。
+
+## 项目来源
+
+本仓库 fork 自 [lvbibir/JetBrainsLxgwNerdMono](https://github.com/lvbibir/JetBrainsLxgwNerdMono)。
+
+本仓库也合并了 [sspig0127](https://github.com/sspig0127) 的 pull request [lvbibir/JetBrainsLxgwNerdMono#1](https://github.com/lvbibir/JetBrainsLxgwNerdMono/pull/1)。在此基础上，本项目将 CJK 源字体替换为 Sarasa Mono SC/TC，并围绕新的字体家族重写构建和发布流程。
 
 ## 特性
 
-- 英文字符来自 JetBrains Mono NerdFont
-- 中日韩 (CJK) 字符来自霞鹜文楷屏幕阅读版等宽 GB (Regular/Medium) 和霞鹜臻楷 GB (Bold)
-- 保留 NerdFont 图标并缩放至与中文等宽
-  - Powerline 符号 (U+E0A0-U+E0DF) 保持原始垂直边界, 确保终端中正确对齐
-  - 普通图标缩放 1.4 倍并垂直居中
-- 完美 2:1 宽度比例 (中文 1200, 英文 600 FUnit)
-- 字重: Regular, Medium, Italic, MediumItalic, Bold, BoldItalic
-- 支持 YAML 配置文件, 可通过命令行覆盖
-- 支持多字重中文字体映射 (可选)
+- 严格 2:1 字宽比例：英文 `600`，CJK `1200`。
+- Nerd Font 图标扩展到与中文等宽。
+- Powerline 符号保留原始垂直边界，保证终端对齐。
+- 每个 locale 提供 6 个样式：`Regular`、`Medium`、`Italic`、`MediumItalic`、`Bold`、`BoldItalic`。
+- SC 和 TC 是两个独立 family，可以只安装其中一个，也可以同时安装。
+- 本地构建和 CI 使用同一个上游字体准备脚本。
 
-## 下载
+## 安装
 
-### 快速选择
+### Homebrew
 
-| 使用场景 | 下载文件 |
-|---------|---------|
-| 💻 **本地安装** (编辑器/IDE/终端) | `JetBrainsLxgwNerdMono.zip` |
-| 🌐 **网页使用** (Web Fonts) | `JetBrainsLxgwNerdMono-split-woff2.zip` |
-| 📄 **只需单个字重** | 选择对应的 `.ttf` 单文件 |
-
-### 文件说明
-
-#### `JetBrainsLxgwNerdMono.zip`
-> **推荐大多数用户下载**
-
-包含 6 个字重的完整 TTF 字体文件, 适用于:
-- ✅ VSCode / JetBrains IDE / Sublime Text 等编辑器
-- ✅ Windows Terminal / iTerm2 / Alacritty 等终端
-- ✅ 系统全局安装
-
-包含字重: Regular, Medium, Italic, MediumItalic, Bold, BoldItalic
-
-#### `JetBrainsLxgwNerdMono-split-woff2.zip`
-> **Web 开发者专用**
-
-经过 [cn-font-split](https://github.com/KonghaYao/cn-font-split) 分包优化的 WOFF2 格式, 适用于:
-- ✅ 网站/博客的 `@font-face` 引用
-- ✅ 需要按需加载中文字符子集的场景
-- ✅ 追求极致加载性能的 Web 项目
-
-包含 `all.css` 可直接引用全部字重
-
-#### 单字体文件 (`.ttf`)
-
-如果你只需要特定字重, 可直接下载对应文件:
-
-| 文件名 | 字重 | 适用场景 |
-|-------|------|---------|
-| `JetBrainsLxgwNerdMono-Regular.ttf` | 常规 | 日常编码 (推荐) |
-| `JetBrainsLxgwNerdMono-Medium.ttf` | 中等 | 偏好稍粗字体 |
-| `JetBrainsLxgwNerdMono-Bold.ttf` | 粗体 | 标题/强调 |
-| `JetBrainsLxgwNerdMono-Italic.ttf` | 斜体 | 注释/变量 |
-| `JetBrainsLxgwNerdMono-MediumItalic.ttf` | 中等斜体 | - |
-| `JetBrainsLxgwNerdMono-BoldItalic.ttf` | 粗斜体 | - |
-
-## 快速开始
-
-### 使用 uv (推荐)
+安装 SC：
 
 ```bash
-# 安装依赖
+brew tap svalocin/fonts
+brew install --cask font-jetbrains-sarasa-mono-nerd-sc
+```
+
+安装 TC：
+
+```bash
+brew tap svalocin/fonts
+brew install --cask font-jetbrains-sarasa-mono-nerd-tc
+```
+
+按需安装 SC、TC，或两个都安装。
+
+### 手动安装
+
+从 GitHub Releases 下载：
+
+- `JetBrainsSarasaMonoNerdSC-<version>.zip`：包含 6 个 SC TTF。
+- `JetBrainsSarasaMonoNerdTC-<version>.zip`：包含 6 个 TC TTF。
+- 每个 Release 也会附带单独的 TTF 文件。
+
+安装后，在编辑器或终端中选择 `JetBrains Sarasa Mono Nerd SC` 或 `JetBrains Sarasa Mono Nerd TC`。
+
+## 字体映射
+
+| 输出样式 | JetBrainsMono Nerd 来源 | Sarasa SC CJK 来源 | Sarasa TC CJK 来源 |
+| --- | --- | --- | --- |
+| `Regular` | `JetBrainsMonoNLNerdFontMono-Regular.ttf` | `SarasaMonoSC-Regular.ttf` | `SarasaMonoTC-Regular.ttf` |
+| `Medium` | `JetBrainsMonoNLNerdFontMono-Medium.ttf` | `SarasaMonoSC-SemiBold.ttf` | `SarasaMonoTC-SemiBold.ttf` |
+| `Italic` | `JetBrainsMonoNLNerdFontMono-Italic.ttf` | `SarasaMonoSC-Italic.ttf` | `SarasaMonoTC-Italic.ttf` |
+| `MediumItalic` | `JetBrainsMonoNLNerdFontMono-MediumItalic.ttf` | `SarasaMonoSC-SemiBoldItalic.ttf` | `SarasaMonoTC-SemiBoldItalic.ttf` |
+| `Bold` | `JetBrainsMonoNLNerdFontMono-Bold.ttf` | `SarasaMonoSC-Bold.ttf` | `SarasaMonoTC-Bold.ttf` |
+| `BoldItalic` | `JetBrainsMonoNLNerdFontMono-BoldItalic.ttf` | `SarasaMonoSC-BoldItalic.ttf` | `SarasaMonoTC-BoldItalic.ttf` |
+
+## 本地构建
+
+安装 Python 依赖：
+
+```bash
 uv sync
-
-# 构建所有字重
-uv run python build.py
-
-# 字体分包 (Web 字体)
-# 默认读取 output/fonts 目录下的字体, 并输出到 output/split 目录
-uv run python split.py
 ```
 
-### 使用 Docker
+准备源字体：
 
 ```bash
-# 构建镜像
-docker build -t jetbrains-lxgw-nerd-mono .
-
-# 运行构建
-docker run --rm \
-    -v $(pwd)/fonts:/app/fonts \
-    -v $(pwd)/output:/app/output \
-    jetbrains-lxgw-nerd-mono
-
-# 构建指定字重
-docker run --rm \
-    -v $(pwd)/fonts:/app/fonts \
-    -v $(pwd)/output:/app/output \
-    jetbrains-lxgw-nerd-mono --styles Regular,Medium
+scripts/fetch-upstream-fonts.sh build/source-fonts build/cache/upstream-fonts
 ```
 
-## 源字体
+构建全部 SC 和 TC 字体：
 
-请将以下字体文件放置在 `fonts/` 目录:
+```bash
+uv run python build.py --parallel 6
+```
 
-### JetBrains Mono NerdFont (v3.4.0)
+默认会将 TTF 文件和 `fonts-manifest.json` 写入 `build/fonts/`。
 
-从 [Nerd Fonts 发布页面](https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip) 下载,解压后放置以下文件:
+覆盖字体版本元数据：
+
+```bash
+uv run python build.py --version 2026.05.18-031700 --parallel 6
+```
+
+使用其他源字体目录：
+
+```bash
+uv run python build.py --fonts-dir /path/to/fonts --output-dir build/fonts --parallel 6
+```
+
+源字体目录需要包含：
 
 - `JetBrainsMonoNLNerdFontMono-Regular.ttf`
 - `JetBrainsMonoNLNerdFontMono-Medium.ttf`
@@ -110,205 +109,55 @@ docker run --rm \
 - `JetBrainsMonoNLNerdFontMono-MediumItalic.ttf`
 - `JetBrainsMonoNLNerdFontMono-Bold.ttf`
 - `JetBrainsMonoNLNerdFontMono-BoldItalic.ttf`
+- `SarasaMonoSC-Regular.ttf`
+- `SarasaMonoSC-SemiBold.ttf`
+- `SarasaMonoSC-Italic.ttf`
+- `SarasaMonoSC-SemiBoldItalic.ttf`
+- `SarasaMonoSC-Bold.ttf`
+- `SarasaMonoSC-BoldItalic.ttf`
+- `SarasaMonoTC-Regular.ttf`
+- `SarasaMonoTC-SemiBold.ttf`
+- `SarasaMonoTC-Italic.ttf`
+- `SarasaMonoTC-SemiBoldItalic.ttf`
+- `SarasaMonoTC-Bold.ttf`
+- `SarasaMonoTC-BoldItalic.ttf`
 
-### 霞鹜文楷屏幕阅读版等宽 GB (v1.521)
+## 验证
 
-直接下载: [LXGWWenKaiMonoGBScreen.ttf](https://github.com/lxgw/LxgwWenKai-Screen/releases/download/v1.521/LXGWWenKaiMonoGBScreen.ttf)
+构建脚本会强制检查 glyph advance width。任何 glyph 宽度不属于 `0`、`600`、`1200` 都会导致构建失败。
 
-- `LXGWWenKaiMonoGBScreen.ttf` - 用于 Regular/Italic/Medium/MediumItalic 字重
+## 发布流程
 
-### 霞鹜臻楷 GB (用于 Bold 字重)
+主工作流是 `.github/workflows/build-release.yml`。
 
-直接下载: [LXGWZhenKaiGB-Regular.ttf](https://github.com/lxgw/LxgwZhenKai/releases)
+它检查以下上游 release：
 
-- `LXGWZhenKaiGB-Regular.ttf` - 用于 Bold/BoldItalic 字重, 提供更粗的中文笔画
+- Nerd Fonts `JetBrainsMono.zip`
+- Sarasa Gothic `SarasaMono` 普通 hinted TTF zip
 
-## 输出
+任一上游变化时，CI 构建 12 个 TTF，上传单独 TTF 资产，并生成两个 zip：
 
-- 生成的字体文件保存在 `output/fonts/` 目录。
-- 分包后的 Web 字体保存在 `output/split/` 目录。
+- `JetBrainsSarasaMonoNerdSC-<version>.zip`
+- `JetBrainsSarasaMonoNerdTC-<version>.zip`
 
-## 字体分包 (Web 字体)
-
-项目包含一个 `split.py` 脚本, 使用 [cn-font-split](https://github.com/KonghaYao/cn-font-split) 将字体分割为 woff2 子集, 用于 Web 分发:
-
-```bash
-# 安装 cn-font-split (需要 Node.js)
-npm install -g cn-font-split
-
-# 运行分包脚本 (自动处理 output/fonts 下的所有字体)
-uv run python split.py
-
-# 自定义目录
-uv run python split.py --input-dir my_fonts --output-dir my_split_fonts
-```
-
-输出结构:
-
-```
-output/split/
-├── all.css                  # 合并所有字体的 CSS 引用
-├── JetBrainsLxgwNerdMono-Regular/
-│   ├── result.css           # 单个字体的 CSS
-│   ├── index.html           # 测试页面 (包含分包验证报告)
-│   └── *.woff2              # 字体子集
-└── ...
-```
-
-分包完成后，您可以直接打开 `output/split/<FontName>/index.html` 查看该字体的分包验证报告和预览效果。
-
-> **注意**: 由于浏览器跨域安全策略 (CORS)，直接双击打开 `index.html` 可能无法正常加载字体文件或 JSON 报告。请使用本地 HTTP 服务器查看:
->
-> ```bash
-> uv run python -m http.server 8000
-> # 访问 http://localhost:8000/output/split/<FontName>/index.html
-> ```
-
-## 2:1 比例验证
-
-验证中英文字符的完美 2:1 宽度比例:
-
-```bash
-# 启动本地 HTTP 服务器打开验证页面
-uv run python -m http.server 8000
-# 然后访问 http://localhost:8000/verify-2-1.html
-```
-
-验证页面现已支持通过下拉菜单切换不同的字重。
-
-对于分包后的 Web 字体，请访问 `http://localhost:8000/verify-2-1-split.html` 进行验证。
-
-或者构建字体后直接在浏览器中打开 `verify-2-1.html`。
-
-![2:1 比例验证](resources/2-1.png)
-
-竖线 (`|`) 应该在所有行之间完美对齐,展示每个中文字符的宽度恰好是英文字符的两倍。
-
-## 命令行选项
-
-### 构建脚本 (build.py)
-
-```
-用法: build.py [-h] [--config CONFIG] [--styles STYLES] [--fonts-dir FONTS_DIR]
-                [--output-dir OUTPUT_DIR] [--parallel PARALLEL]
-
-选项:
-  --config CONFIG         配置文件路径 (默认: config.yaml)
-  --styles STYLES         逗号分隔的字重列表 (默认: 从配置文件读取)
-  --fonts-dir FONTS_DIR   源字体目录 (默认: fonts/)
-  --output-dir OUTPUT_DIR 输出目录 (默认: output/fonts/)
-  --parallel PARALLEL     并行工作进程数 (默认: 1)
-```
-
-配置优先级: 命令行参数 > config.yaml > 默认值
-
-## 配置文件
-
-`config.yaml` 文件提供集中式的构建配置:
-
-```yaml
-# 字体元数据
-font:
-  family_name: "JetBrainsLxgwNerdMono"
-  version: "1.3"
-  author: "lvbibir"
-  copyright: "Copyright (c) 2024 lvbibir"
-  description: "JetBrains Mono NerdFont + LXGW WenKai Mono merged font with 2:1 CJK ratio."
-  url: "https://github.com/lvbibir/JetBrainsLxgwNerdMono"
-  license: "This font is licensed under the SIL Open Font License, Version 1.1."
-  license_url: "https://openfontlicense.org"
-
-# 源字体目录
-fonts_dir: "fonts"
-
-# 字重配置
-styles:
-  Regular:
-    en_font: "JetBrainsMonoNLNerdFontMono-Regular.ttf"
-    cn_font: "LXGWWenKaiMonoGBScreen.ttf"
-    display_name: "Regular"
-  # ... 其他字重
-
-# 构建选项
-build:
-  styles: "Regular,Medium,Italic,MediumItalic,Bold,BoldItalic"
-  output_dir: "output/fonts"
-  parallel: 6
-
-# 字形宽度配置 (2:1 比例)
-width:
-  en_width: 600
-  cn_width: 1200
-  # CJK 视觉缩放因子 (1.0 = 无缩放, 1.08 = 放大 8%)
-  visual_scale: 1.08
-```
-
-### 多字重中文字体示例
-
-如果中文字体有多个字重, 为每个样式指定不同的 `cn_font`:
-
-```yaml
-styles:
-  Regular:
-    en_font: "JetBrainsMonoNLNerdFontMono-Regular.ttf"
-    cn_font: "LXGWWenKaiMonoGBScreen-Regular.ttf"
-    display_name: "Regular"
-  Medium:
-    en_font: "JetBrainsMonoNLNerdFontMono-Medium.ttf"
-    cn_font: "LXGWWenKaiMonoGBScreen-Medium.ttf"
-    display_name: "Medium"
-  Bold:
-    en_font: "JetBrainsMonoNLNerdFontMono-Bold.ttf"
-    cn_font: "LXGWWenKaiMonoGBScreen-Medium.ttf"  # 回退到 Medium
-    display_name: "Bold"
-```
-
-### 分包脚本 (split.py)
-
-```
-用法: split.py [-h] [--input-dir INPUT_DIR] [--output-dir OUTPUT_DIR]
-
-选项:
-  --input-dir INPUT_DIR   包含字体文件的输入目录 (默认: output/fonts)
-  --output-dir OUTPUT_DIR 分包字体的输出目录 (默认: output/split)
-```
-
-## 项目结构
-
-```
-.
-├── fonts/                  # 源字体
-├── output/                 # 输出目录
-│   ├── fonts/              # 生成的 TTF 字体
-│   │   └── fonts-manifest.json  # 字体元数据(用于验证页面)
-│   └── split/              # 生成的 Web 字体 (WOFF2)
-├── src/
-│   ├── __init__.py
-│   ├── config.py           # 字体配置
-│   ├── merge.py            # 核心合并逻辑
-│   └── utils.py            # 工具函数
-├── build.py                # 主构建脚本
-├── split.py                # 字体分包脚本
-├── config.yaml             # 构建配置
-├── pyproject.toml          # Python 项目配置
-├── Dockerfile              # Docker 构建
-└── README.md
-```
+`.github/workflows/homebrew-publish.yml` 会向 `svalocin/homebrew-fonts` 发布两个 cask。
 
 ## 致谢
 
-- [maple-font](https://github.com/subframe7536/maple-font): 本项目的实现方案参考来源
-- [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts): 提供了丰富的开发者图标
-- [霞鹜文楷](https://github.com/lxgw/LxgwWenKai): 优秀的开源中文字体
-- [霞鹜臻楷](https://github.com/lxgw/LxgwZhenKai): 霞鹜文楷的粗体版本
-- [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono): 优秀的编程等宽字体
-- [cn-font-split](https://github.com/KonghaYao/cn-font-split): 强大的 Web 字体分包工具
+本项目建立在这些开源项目之上：
+
+- [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono)：英文编程字体基础。
+- [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts)：提供 JetBrainsMono Nerd Font 成品包。
+- [Sarasa Gothic](https://github.com/be5invis/Sarasa-Gothic)：提供 Sarasa Mono SC 和 TC CJK 字形。
+- [lvbibir/JetBrainsLxgwNerdMono](https://github.com/lvbibir/JetBrainsLxgwNerdMono)：本仓库 fork 的上游项目。
+- [sspig0127](https://github.com/sspig0127)：其 pull request [lvbibir/JetBrainsLxgwNerdMono#1](https://github.com/lvbibir/JetBrainsLxgwNerdMono/pull/1) 已合并到本 fork。
 
 ## 许可证
 
-本项目仅供个人使用。请查看源字体的许可证:
+本仓库遵循源字体和工具的对应许可证：
 
 - JetBrains Mono: OFL-1.1
-- 霞鹜文楷: OFL-1.1
-- 霞鹜臻楷: OFL-1.1
+- Sarasa Gothic: OFL-1.1
 - Nerd Fonts: MIT
+
+请以各上游项目的许可证文本为准。

@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
 """
-JetBrainsLxgwNerdMono Font Builder
+JetBrains Sarasa Mono Nerd font builder.
 
-Build merged font with:
-- English characters from JetBrains Mono NerdFont
-- CJK characters from LXGW WenKai Mono
-- NerdFont icons preserved
+Build merged fonts with:
+- English characters from JetBrainsMono Nerd Font
+- CJK characters from Sarasa Mono SC/TC
+- Nerd Font icons preserved
 - 2:1 width ratio (CJK 1200, English 600)
-
-Usage:
-    uv run python build.py
-    uv run python build.py --config config.yaml
-    uv run python build.py --styles Regular,Medium
 """
 
 import argparse
@@ -19,27 +14,18 @@ import json
 import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import yaml
 
-# Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.config import FontConfig
-from src.merge import merge_fonts, center_cjk_glyphs, scale_nerd_icons
+from src.merge import center_cjk_glyphs, merge_fonts, scale_nerd_icons
 from src.utils import update_font_names, verify_glyph_width
 
 
 def load_config(config_path: Path) -> Dict[str, Any]:
-    """Load configuration from YAML file.
-
-    Args:
-        config_path: Path to config.yaml
-
-    Returns:
-        Configuration dictionary
-    """
     if not config_path.exists():
         return {}
 
@@ -48,28 +34,18 @@ def load_config(config_path: Path) -> Dict[str, Any]:
 
 
 def get_config_value(yaml_config: Dict[str, Any], *keys: str, default: Any = None) -> Any:
-    """Get nested value from config dictionary.
-
-    Args:
-        yaml_config: Configuration dictionary
-        keys: Nested keys to access
-        default: Default value if key not found
-
-    Returns:
-        Configuration value or default
-    """
     value = yaml_config
     for key in keys:
-        if isinstance(value, dict):
-            value = value.get(key)
-        else:
+        if not isinstance(value, dict):
             return default
+        value = value.get(key)
         if value is None:
             return default
     return value
 
 
 def build_single_font(
+    variant_key: str,
     style: str,
     en_font_path: Path,
     cn_font_path: Path,
@@ -78,39 +54,20 @@ def build_single_font(
     config: FontConfig,
     metadata: dict,
 ) -> str:
-    """Build a single font variant.
+    print(f"\nBuilding {config.family_name_compact}-{style} ({variant_key})...")
 
-    Args:
-        style: Font style (Regular, Medium, Italic, MediumItalic)
-        en_font_path: Path to English font (e.g., JetBrains Mono NerdFont)
-        cn_font_path: Path to Chinese font (e.g., LXGW WenKai Mono)
-        display_name: Display name for the style in font metadata
-        output_dir: Output directory
-        config: FontConfig object
-        metadata: Font metadata dict (author, copyright, description, url, license, license_url)
-
-    Returns:
-        Output file path
-    """
-    print(f"\nBuilding {config.family_name_compact}-{style}...")
-
-    # Merge fonts
     merged_font = merge_fonts(
         base_font_path=str(en_font_path),
         cn_font_path=str(cn_font_path),
         config=config,
     )
 
-    # Monospace-specific processing
-    # Scale NerdFont icons to CJK width
     print("  Scaling NerdFont icons...")
     scale_nerd_icons(merged_font, config)
 
-    # Center CJK glyphs
     print("  Centering CJK glyphs...")
     center_cjk_glyphs(merged_font, config)
 
-    # Update font names
     postscript_name = f"{config.family_name_compact}-{style}"
 
     print("  Updating font metadata...")
@@ -129,18 +86,13 @@ def build_single_font(
         license_url=metadata.get("license_url", ""),
     )
 
-    # Verify glyph widths
     print("  Verifying glyph widths...")
-    try:
-        verify_glyph_width(
-            font=merged_font,
-            expected_widths=[0, config.en_width, config.cn_width],
-            file_name=postscript_name,
-        )
-    except ValueError as e:
-        print(f"  Warning: {e}")
+    verify_glyph_width(
+        font=merged_font,
+        expected_widths=[0, config.en_width, config.cn_width],
+        file_name=postscript_name,
+    )
 
-    # Save font
     output_path = output_dir / f"{postscript_name}.ttf"
     merged_font.save(str(output_path))
     merged_font.close()
@@ -149,18 +101,20 @@ def build_single_font(
     return str(output_path)
 
 
-def main():
-    # Default config path
+def resolve_font_name(template: str, variant_cfg: Dict[str, Any]) -> str:
+    return template.format(**variant_cfg)
+
+
+def main() -> None:
     default_config_path = Path(__file__).parent / "config.yaml"
 
     parser = argparse.ArgumentParser(
-        description="Build JetBrainsLxgwNerdMono font",
+        description="Build JetBrains Sarasa Mono Nerd SC/TC fonts",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   uv run python build.py
-  uv run python build.py --config config.yaml
-  uv run python build.py --styles Regular,Medium
+  uv run python build.py --fonts-dir build/source-fonts --output-dir build/fonts --parallel 6
 
 Configuration priority: CLI args > config.yaml > defaults
         """,
@@ -172,22 +126,16 @@ Configuration priority: CLI args > config.yaml > defaults
         help=f"Path to config.yaml (default: {default_config_path})",
     )
     parser.add_argument(
-        "--styles",
-        type=str,
-        default=None,
-        help="Comma-separated styles to build (default: from config or all)",
-    )
-    parser.add_argument(
         "--fonts-dir",
         type=Path,
         default=None,
-        help="Directory containing source fonts (default: from config or fonts/)",
+        help="Directory containing source fonts (default: from config or build/source-fonts/)",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=None,
-        help="Output directory (default: from config or output/fonts/)",
+        help="Output directory (default: from config or build/fonts/)",
     )
     parser.add_argument(
         "--parallel",
@@ -195,31 +143,30 @@ Configuration priority: CLI args > config.yaml > defaults
         default=None,
         help="Number of parallel workers (default: from config or 1)",
     )
+    parser.add_argument(
+        "--version",
+        type=str,
+        default=None,
+        help="Override font version metadata (default: from config)",
+    )
 
     args = parser.parse_args()
-
-    # Load YAML config
     yaml_config = load_config(args.config)
 
-    # Get styles configuration from YAML
+    variants_config = get_config_value(yaml_config, "variants") or {}
     styles_config = get_config_value(yaml_config, "styles") or {}
+    if not variants_config:
+        print("Error: No variants defined in config.yaml")
+        sys.exit(1)
     if not styles_config:
         print("Error: No styles defined in config.yaml")
         sys.exit(1)
 
-    # Merge config: CLI args > YAML > defaults
-    styles_str = (
-        args.styles
-        or get_config_value(yaml_config, "build", "styles")
-        or ",".join(styles_config.keys())
+    fonts_dir = args.fonts_dir or Path(
+        get_config_value(yaml_config, "fonts_dir") or "build/source-fonts"
     )
-    fonts_dir = (
-        args.fonts_dir
-        or Path(get_config_value(yaml_config, "fonts_dir") or "fonts")
-    )
-    output_dir = (
-        args.output_dir
-        or Path(get_config_value(yaml_config, "build", "output_dir") or "output/fonts")
+    output_dir = args.output_dir or Path(
+        get_config_value(yaml_config, "build", "output_dir") or "build/fonts"
     )
     parallel = (
         args.parallel
@@ -227,14 +174,11 @@ Configuration priority: CLI args > config.yaml > defaults
         else get_config_value(yaml_config, "build", "parallel", default=1)
     )
 
-    # Font metadata from config
-    family_name = get_config_value(yaml_config, "font", "family_name") or "JetBrainsLxgwNerdMono"
-    version = get_config_value(yaml_config, "font", "version") or "1.0"
+    version = args.version or get_config_value(yaml_config, "font", "version") or "1.0"
     en_width = get_config_value(yaml_config, "width", "en_width", default=600)
     cn_width = get_config_value(yaml_config, "width", "cn_width", default=1200)
-    visual_scale = get_config_value(yaml_config, "width", "visual_scale", default=1.08)
+    visual_scale = get_config_value(yaml_config, "width", "visual_scale", default=1.0)
 
-    # Font metadata for name table
     metadata = {
         "author": get_config_value(yaml_config, "font", "author") or "",
         "copyright": get_config_value(yaml_config, "font", "copyright") or "",
@@ -244,121 +188,101 @@ Configuration priority: CLI args > config.yaml > defaults
         "license_url": get_config_value(yaml_config, "font", "license_url") or "",
     }
 
-    # Initialize FontConfig
-    config = FontConfig(
-        family_name=family_name,
-        family_name_compact=family_name,
-        version=version,
-        visual_scale=visual_scale,
-        en_width=en_width,
-        cn_width=cn_width,
-    )
+    jobs: List[Dict[str, Any]] = []
+    manifest = {"version": version, "variants": []}
 
-    # Parse styles to build
-    styles = [s.strip() for s in styles_str.split(",")]
-    valid_styles = list(styles_config.keys())
-
-    for style in styles:
-        if style not in valid_styles:
-            print(f"Error: Invalid style '{style}'. Valid styles: {valid_styles}")
+    for variant_key, variant_cfg in variants_config.items():
+        family_name = variant_cfg.get("family_name")
+        family_name_compact = variant_cfg.get("family_name_compact")
+        if not family_name or not family_name_compact:
+            print(f"Error: Variant '{variant_key}' must define family_name and family_name_compact")
             sys.exit(1)
 
-    # Build font paths and validate
-    font_paths: Dict[str, Dict[str, Any]] = {}
-    for style in styles:
-        style_cfg = styles_config[style]
-        en_font = style_cfg.get("en_font")
-        cn_font = style_cfg.get("cn_font")
-        display_name = style_cfg.get("display_name", style)
+        variant_fonts = []
+        config = FontConfig(
+            family_name=family_name,
+            family_name_compact=family_name_compact,
+            version=version,
+            visual_scale=visual_scale,
+            en_width=en_width,
+            cn_width=cn_width,
+        )
 
-        if not en_font or not cn_font:
-            print(f"Error: Style '{style}' must have both 'en_font' and 'cn_font' defined")
-            sys.exit(1)
+        for style, style_cfg in styles_config.items():
+            en_font = style_cfg.get("en_font")
+            cn_font_template = style_cfg.get("cn_font")
+            display_name = style_cfg.get("display_name", style)
+            if not en_font or not cn_font_template:
+                print(f"Error: Style '{style}' must define en_font and cn_font")
+                sys.exit(1)
 
-        en_font_path = fonts_dir / en_font
-        cn_font_path = fonts_dir / cn_font
+            cn_font = resolve_font_name(cn_font_template, variant_cfg)
+            en_font_path = fonts_dir / en_font
+            cn_font_path = fonts_dir / cn_font
 
-        if not en_font_path.exists():
-            print(f"Error: English font not found: {en_font_path}")
-            sys.exit(1)
-        if not cn_font_path.exists():
-            print(f"Error: Chinese font not found: {cn_font_path}")
-            sys.exit(1)
+            if not en_font_path.exists():
+                print(f"Error: English font not found: {en_font_path}")
+                sys.exit(1)
+            if not cn_font_path.exists():
+                print(f"Error: CJK font not found: {cn_font_path}")
+                sys.exit(1)
 
-        font_paths[style] = {
-            "en_font_path": en_font_path,
-            "cn_font_path": cn_font_path,
-            "display_name": display_name,
-        }
+            jobs.append(
+                {
+                    "variant_key": variant_key,
+                    "style": style,
+                    "en_font_path": en_font_path,
+                    "cn_font_path": cn_font_path,
+                    "display_name": display_name,
+                    "output_dir": output_dir,
+                    "config": config,
+                    "metadata": metadata,
+                }
+            )
+            variant_fonts.append(
+                {
+                    "style": style,
+                    "display_name": display_name,
+                    "filename": f"{family_name_compact}-{style}.ttf",
+                }
+            )
 
-    # Create output directory
+        manifest["variants"].append(
+            {
+                "key": variant_key,
+                "family_name": family_name,
+                "family_name_compact": family_name_compact,
+                "fonts": variant_fonts,
+            }
+        )
+
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Building {config.family_name} v{config.version}")
-    print(f"Styles: {', '.join(styles)}")
+    print(f"Building JetBrains Sarasa Mono Nerd v{version}")
+    print(f"Variants: {', '.join(variants_config.keys())}")
+    print(f"Styles: {', '.join(styles_config.keys())}")
     print(f"Source: {fonts_dir}")
     print(f"Output: {output_dir}")
-    print(f"Width ratio: {config.cn_width}:{config.en_width} (2:1)")
+    print(f"Width ratio: {cn_width}:{en_width} (2:1)")
     print("Font mapping:")
-    for style in styles:
-        paths = font_paths[style]
-        print(f"  {style}:")
-        print(f"    EN: {paths['en_font_path'].name}")
-        print(f"    CN: {paths['cn_font_path'].name}")
+    for job in jobs:
+        print(f"  {job['config'].family_name_compact}-{job['style']}:")
+        print(f"    EN: {job['en_font_path'].name}")
+        print(f"    CJK: {job['cn_font_path'].name}")
 
-    # Build fonts
     if parallel <= 1:
-        # Sequential build
-        for style in styles:
-            paths = font_paths[style]
-            build_single_font(
-                style,
-                paths["en_font_path"],
-                paths["cn_font_path"],
-                paths["display_name"],
-                output_dir,
-                config,
-                metadata,
-            )
+        for job in jobs:
+            build_single_font(**job)
     else:
-        # Parallel build
         with ProcessPoolExecutor(max_workers=parallel) as executor:
-            futures = {}
-            for style in styles:
-                paths = font_paths[style]
-                future = executor.submit(
-                    build_single_font,
-                    style,
-                    paths["en_font_path"],
-                    paths["cn_font_path"],
-                    paths["display_name"],
-                    output_dir,
-                    config,
-                    metadata,
-                )
-                futures[future] = style
-
+            futures = {executor.submit(build_single_font, **job): job for job in jobs}
             for future in as_completed(futures):
-                style = futures[future]
+                job = futures[future]
                 try:
                     future.result()
                 except Exception as e:
-                    print(f"Error building {style}: {e}")
+                    print(f"Error building {job['config'].family_name_compact}-{job['style']}: {e}")
                     raise
-
-    # Generate font manifest for HTML verification pages
-    manifest = {
-        "family_name": config.family_name,
-        "version": config.version,
-        "fonts": []
-    }
-    for style in styles:
-        display_name = font_paths[style]["display_name"]
-        manifest["fonts"].append({
-            "style": style,
-            "display_name": display_name,
-            "filename": f"{config.family_name_compact}-{style}.ttf"
-        })
 
     manifest_path = output_dir / "fonts-manifest.json"
     with open(manifest_path, "w", encoding="utf-8") as f:

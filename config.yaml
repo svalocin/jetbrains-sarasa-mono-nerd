@@ -1,56 +1,57 @@
-# JetBrainsLxgwNerdMono Build Configuration
+# JetBrains Sarasa Mono Nerd Build Configuration
 
-# Font metadata
 font:
-  family_name: "JetBrainsLxgwNerdMono"
-  version: "1.3"
-  author: "lvbibir"
-  copyright: "Copyright (c) 2024 lvbibir"
-  description: "JetBrains Mono NerdFont + LXGW WenKai Mono merged font with 2:1 CJK ratio. English from JetBrains Mono, CJK from LXGW WenKai."
-  url: "https://github.com/lvbibir/JetBrainsLxgwNerdMono"
-  license: "This font is licensed under the SIL Open Font License, Version 1.1. JetBrains Mono: OFL-1.1, LXGW WenKai: OFL-1.1, Nerd Fonts: MIT."
+  version: "1.0"
+  author: "svalocin"
+  copyright: "Copyright (c) 2026 svalocin"
+  description: "JetBrains Mono Nerd Font merged with Sarasa Mono CJK glyphs as a 2:1 CJK monospace programming font."
+  url: "https://github.com/svalocin/jetbrains-sarasa-mono-nerd"
+  license: "This font follows the licenses of its source fonts. JetBrains Mono: OFL-1.1, Sarasa Gothic: OFL-1.1, Nerd Fonts: MIT."
   license_url: "https://openfontlicense.org"
 
-# Source fonts directory
-fonts_dir: "fonts"
+fonts_dir: "build/source-fonts"
 
-# Styles configuration
-# Each style maps: en_font (English), cn_font (CJK), display_name (metadata)
+variants:
+  SC:
+    family_name: "JetBrains Sarasa Mono Nerd SC"
+    family_name_compact: "JetBrainsSarasaMonoNerdSC"
+    sarasa_prefix: "SarasaMonoSC"
+  TC:
+    family_name: "JetBrains Sarasa Mono Nerd TC"
+    family_name_compact: "JetBrainsSarasaMonoNerdTC"
+    sarasa_prefix: "SarasaMonoTC"
+
 styles:
   Regular:
     en_font: "JetBrainsMonoNLNerdFontMono-Regular.ttf"
-    cn_font: "LXGWWenKaiMonoGBScreen.ttf"
+    cn_font: "{sarasa_prefix}-Regular.ttf"
     display_name: "Regular"
-  Italic:
-    en_font: "JetBrainsMonoNLNerdFontMono-Italic.ttf"
-    cn_font: "LXGWWenKaiMonoGBScreen.ttf"
-    display_name: "Italic"
   Medium:
     en_font: "JetBrainsMonoNLNerdFontMono-Medium.ttf"
-    cn_font: "LXGWWenKaiMonoGBScreen.ttf"
+    cn_font: "{sarasa_prefix}-SemiBold.ttf"
     display_name: "Medium"
+  Italic:
+    en_font: "JetBrainsMonoNLNerdFontMono-Italic.ttf"
+    cn_font: "{sarasa_prefix}-Italic.ttf"
+    display_name: "Italic"
   MediumItalic:
     en_font: "JetBrainsMonoNLNerdFontMono-MediumItalic.ttf"
-    cn_font: "LXGWWenKaiMonoGBScreen.ttf"
+    cn_font: "{sarasa_prefix}-SemiBoldItalic.ttf"
     display_name: "Medium Italic"
   Bold:
     en_font: "JetBrainsMonoNLNerdFontMono-Bold.ttf"
-    cn_font: "LXGWZhenKaiGB-Regular.ttf"
+    cn_font: "{sarasa_prefix}-Bold.ttf"
     display_name: "Bold"
   BoldItalic:
     en_font: "JetBrainsMonoNLNerdFontMono-BoldItalic.ttf"
-    cn_font: "LXGWZhenKaiGB-Regular.ttf"
+    cn_font: "{sarasa_prefix}-BoldItalic.ttf"
     display_name: "Bold Italic"
 
-# Build options
 build:
-  styles: "Regular,Medium,Italic,MediumItalic,Bold,BoldItalic"  # Comma-separated
-  output_dir: "output/fonts"
-  parallel: 6  # Number of parallel workers
+  output_dir: "build/fonts"
+  parallel: 6
 
-# Glyph width configuration (2:1 ratio)
 width:
   en_width: 600
   cn_width: 1200
-  # CJK visual scale factor (1.0 = no extra scaling, 1.08 = 8% larger)
-  visual_scale: 1.08
+  visual_scale: 1.0

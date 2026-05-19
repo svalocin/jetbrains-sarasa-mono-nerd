@@ -1,1 +1,1 @@
-# JetBrainsLxgwNerdMono font builder
+# JetBrains Sarasa Mono Nerd font builder
