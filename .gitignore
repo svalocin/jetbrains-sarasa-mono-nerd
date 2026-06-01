@@ -224,3 +224,4 @@ fonts/
 output/
 dist/
 ci-fonts/
+.DS_Store

@@ -65,7 +65,7 @@ jobs:
 
           if gh release view --json body --jq '.body' > latest-release-body.md 2>/dev/null; then
             echo "found=true" >> "$GITHUB_OUTPUT"
-            awk '/^<!-- upstream-versions$/,/^-->$/' latest-release-body.md > latest-upstream.txt || true
+            awk '/^[[:space:]]*<!-- upstream-versions[[:space:]]*$/,/^[[:space:]]*-->/' latest-release-body.md | sed 's/^[[:space:]]*//' > latest-upstream.txt || true
             cat latest-upstream.txt
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
