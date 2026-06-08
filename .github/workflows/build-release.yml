@@ -56,63 +56,48 @@ jobs:
           echo "Nerd Fonts: $nerd_tag"
           echo "Sarasa Gothic: $sarasa_tag"
 
-      - name: Read latest project release metadata
-        id: latest
+      - name: Generate release tag
+        id: version
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          if gh release view --json body --jq '.body' > latest-release-body.md 2>/dev/null; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
-            awk '/^[[:space:]]*<!-- upstream-versions[[:space:]]*$/,/^[[:space:]]*-->/' latest-release-body.md | sed 's/^[[:space:]]*//' > latest-upstream.txt || true
-            cat latest-upstream.txt
-          else
-            echo "found=false" >> "$GITHUB_OUTPUT"
-            : > latest-upstream.txt
-          fi
-
-          {
-            echo "body<<EOF"
-            cat latest-upstream.txt
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Decide whether to build
-        id: decide
-        env:
-          FORCE_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
-          LATEST_BODY: ${{ steps.latest.outputs.body }}
           NERD_TAG: ${{ steps.upstream.outputs.nerd_tag }}
           SARASA_TAG: ${{ steps.upstream.outputs.sarasa_tag }}
         run: |
           set -euo pipefail
 
+          sanitize_tag_part() {
+            printf '%s' "$1" | sed -E 's/[^A-Za-z0-9._-]+/-/g; s/^-+//; s/-+$//'
+          }
+
+          nerd_part=$(sanitize_tag_part "$NERD_TAG")
+          sarasa_part=$(sanitize_tag_part "$SARASA_TAG")
+          tag_name="nerd-fonts-${nerd_part}-sarasa-gothic-${sarasa_part}"
+
+          echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
+          echo "Release tag: $tag_name"
+
+      - name: Decide whether to build
+        id: decide
+        env:
+          FORCE_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ steps.version.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+
           should_build=false
-          reason="upstream versions unchanged"
+          reason="release already exists for upstream versions"
 
           if [ "$FORCE_RELEASE" = "true" ]; then
             should_build=true
             reason="force=true"
-          elif ! grep -Fq "nerd-fonts=$NERD_TAG" <<< "$LATEST_BODY"; then
+          elif ! gh release view "$TAG_NAME" --repo "$GH_REPO" >/dev/null 2>&1; then
             should_build=true
-            reason="Nerd Fonts changed"
-          elif ! grep -Fq "sarasa-gothic=$SARASA_TAG" <<< "$LATEST_BODY"; then
-            should_build=true
-            reason="Sarasa Gothic changed"
+            reason="release does not exist for upstream versions"
           fi
 
           echo "should_build=$should_build" >> "$GITHUB_OUTPUT"
           echo "$reason"
-
-      - name: Generate release tag
-        id: version
-        if: steps.decide.outputs.should_build == 'true'
-        run: |
-          set -euo pipefail
-          tag_name=$(date -u +'%Y.%m.%d-%H%M%S')
-          echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
-          echo "Release tag: $tag_name"
 
   build_release:
     runs-on: ubuntu-latest
@@ -128,7 +113,7 @@ jobs:
           python-version: "3.11"
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v8
         with:
           enable-cache: true
 
@@ -215,12 +200,13 @@ jobs:
           EOF
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.check.outputs.tag_name }}
           name: ${{ needs.check.outputs.tag_name }}
           body_path: release-notes.md
           files: ${{ steps.package.outputs.files }}
+          overwrite_files: true
           draft: false
           prerelease: false
         env:
