@@ -10,6 +10,30 @@ version="$1"
 fonts_dir="$2"
 release_dir="$3"
 
+require_value() {
+  local name="$1"
+  local value="$2"
+
+  if [ -z "$value" ] || [ "$value" = "null" ]; then
+    echo "ERROR: $name is required" >&2
+    exit 1
+  fi
+}
+
+require_value "version" "$version"
+require_value "fonts directory" "$fonts_dir"
+require_value "release directory" "$release_dir"
+
+if [ ! -d "$fonts_dir" ]; then
+  echo "ERROR: fonts directory does not exist: $fonts_dir" >&2
+  exit 1
+fi
+
+if ! command -v zip >/dev/null 2>&1; then
+  echo "ERROR: zip is required" >&2
+  exit 1
+fi
+
 styles=(Regular Medium Italic MediumItalic Bold BoldItalic)
 variants=(SC TC)
 

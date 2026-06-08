@@ -20,6 +20,31 @@ work_dir="$2"
 nerd_url="${3:-}"
 sarasa_url="${4:-}"
 
+require_value() {
+  local name="$1"
+  local value="$2"
+
+  if [ -z "$value" ] || [ "$value" = "null" ]; then
+    echo "ERROR: $name is required" >&2
+    exit 1
+  fi
+}
+
+require_command() {
+  local command_name="$1"
+
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    echo "ERROR: $command_name is required" >&2
+    exit 1
+  fi
+}
+
+require_value "output directory" "$output_dir"
+require_value "work directory" "$work_dir"
+
+require_command curl
+require_command unzip
+
 mkdir -p "$output_dir" "$work_dir"
 
 python_bin="${PYTHON:-}"
@@ -81,19 +106,40 @@ if [ -z "$sarasa_url" ]; then
   sarasa_url="$(resolve_latest_url "be5invis/Sarasa-Gothic" "sarasa")"
 fi
 
+require_value "Nerd Fonts download URL" "$nerd_url"
+require_value "Sarasa Mono download URL" "$sarasa_url"
+
 nerd_archive="$work_dir/JetBrainsMono.zip"
 sarasa_archive="$work_dir/SarasaMono.zip"
 nerd_extract="$work_dir/JetBrainsMono"
 sarasa_extract="$work_dir/SarasaMono"
 
-echo "Downloading upstream fonts..."
-curl -fL --retry 3 --retry-delay 5 "$nerd_url" -o "$nerd_archive" &
+download_archive() {
+  local label="$1"
+  local url="$2"
+  local output="$3"
+
+  echo "Downloading $label..."
+  curl -fL --retry 3 --retry-delay 5 "$url" -o "$output"
+}
+
+download_archive "Nerd Fonts" "$nerd_url" "$nerd_archive" &
 pid_nerd=$!
-curl -fL --retry 3 --retry-delay 5 "$sarasa_url" -o "$sarasa_archive" &
+download_archive "Sarasa Mono" "$sarasa_url" "$sarasa_archive" &
 pid_sarasa=$!
 
-wait "$pid_nerd"
-wait "$pid_sarasa"
+download_failed=false
+if ! wait "$pid_nerd"; then
+  echo "ERROR: failed to download Nerd Fonts archive: $nerd_url" >&2
+  download_failed=true
+fi
+if ! wait "$pid_sarasa"; then
+  echo "ERROR: failed to download Sarasa Mono archive: $sarasa_url" >&2
+  download_failed=true
+fi
+if [ "$download_failed" = "true" ]; then
+  exit 1
+fi
 
 rm -rf "$nerd_extract" "$sarasa_extract"
 unzip -q "$nerd_archive" -d "$nerd_extract"
@@ -104,8 +150,22 @@ copy_exact_font() {
   local name="$2"
   local source
 
-  source="$(find "$root" -type f -name "$name" | head -n 1)"
-  if [ -z "$source" ]; then
+  if ! source="$(
+    "$python_bin" - "$root" "$name" <<'PY'
+from pathlib import Path
+import sys
+
+root = Path(sys.argv[1])
+name = sys.argv[2]
+
+for path in root.rglob(name):
+    if path.is_file():
+        print(path)
+        break
+else:
+    raise SystemExit(1)
+PY
+  )"; then
     echo "Missing font file: $name" >&2
     exit 1
   fi
@@ -118,7 +178,7 @@ copy_normalized_font() {
   local target="$2"
   local source
 
-  source="$(
+  if ! source="$(
     "$python_bin" - "$root" "$target" <<'PY'
 from pathlib import Path
 import re
@@ -136,9 +196,7 @@ for path in root.rglob("*.ttf"):
 else:
     raise SystemExit(1)
 PY
-  )"
-
-  if [ -z "$source" ]; then
+  )"; then
     echo "Missing Sarasa font file matching: $target" >&2
     exit 1
   fi

@@ -24,11 +24,15 @@ jobs:
     outputs:
       should_build: ${{ steps.decide.outputs.should_build }}
       tag_name: ${{ steps.version.outputs.tag_name }}
+      upstream_tag: ${{ steps.version.outputs.upstream_tag }}
       nerd_tag: ${{ steps.upstream.outputs.nerd_tag }}
       sarasa_tag: ${{ steps.upstream.outputs.sarasa_tag }}
       nerd_url: ${{ steps.upstream.outputs.nerd_url }}
       sarasa_url: ${{ steps.upstream.outputs.sarasa_url }}
     steps:
+      - name: Checkout scripts
+        uses: actions/checkout@v5
+
       - name: Resolve upstream versions
         id: upstream
         env:
@@ -39,12 +43,14 @@ jobs:
           nerd_tag=$(gh api repos/ryanoasis/nerd-fonts/releases/latest --jq '.tag_name')
           sarasa_tag=$(gh api repos/be5invis/Sarasa-Gothic/releases/latest --jq '.tag_name')
           nerd_url=$(gh api repos/ryanoasis/nerd-fonts/releases/latest --jq '.assets[] | select(.name == "JetBrainsMono.zip") | .browser_download_url')
-          sarasa_url=$(gh api repos/be5invis/Sarasa-Gothic/releases/latest --jq '.assets[] | select((.name | ascii_downcase | endswith(".zip")) and (.name | ascii_downcase | test("sarasa[-_]?mono")) and (.name | ascii_downcase | contains("ttf")) and ((.name | ascii_downcase | contains("unhinted")) | not)) | .browser_download_url' | head -n 1)
+          sarasa_url=$(gh api repos/be5invis/Sarasa-Gothic/releases/latest --jq 'first(.assets[] | select((.name | ascii_downcase | endswith(".zip")) and (.name | ascii_downcase | test("sarasa[-_]?mono")) and (.name | ascii_downcase | contains("ttf")) and ((.name | ascii_downcase | contains("unhinted")) | not)) | .browser_download_url)')
 
-          if [ -z "$nerd_url" ] || [ -z "$sarasa_url" ]; then
-            echo "ERROR: failed to resolve one or more upstream asset URLs" >&2
-            exit 1
-          fi
+          for value in "$nerd_tag" "$sarasa_tag" "$nerd_url" "$sarasa_url"; do
+            if [ -z "$value" ] || [ "$value" = "null" ]; then
+              echo "ERROR: failed to resolve one or more upstream versions or asset URLs" >&2
+              exit 1
+            fi
+          done
 
           {
             echo "nerd_tag=$nerd_tag"
@@ -64,16 +70,13 @@ jobs:
         run: |
           set -euo pipefail
 
-          sanitize_tag_part() {
-            printf '%s' "$1" | sed -E 's/[^A-Za-z0-9._-]+/-/g; s/^-+//; s/-+$//'
-          }
-
-          nerd_part=$(sanitize_tag_part "$NERD_TAG")
-          sarasa_part=$(sanitize_tag_part "$SARASA_TAG")
-          tag_name="nerd-fonts-${nerd_part}-sarasa-gothic-${sarasa_part}"
+          tag_name=$(bash .github/scripts/release-tags.sh timestamp)
+          upstream_tag=$(bash .github/scripts/release-tags.sh upstream-marker "$NERD_TAG" "$SARASA_TAG")
 
           echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
+          echo "upstream_tag=$upstream_tag" >> "$GITHUB_OUTPUT"
           echo "Release tag: $tag_name"
+          echo "Upstream marker tag: $upstream_tag"
 
       - name: Decide whether to build
         id: decide
@@ -81,19 +84,19 @@ jobs:
           FORCE_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          TAG_NAME: ${{ steps.version.outputs.tag_name }}
+          UPSTREAM_TAG: ${{ steps.version.outputs.upstream_tag }}
         run: |
           set -euo pipefail
 
           should_build=false
-          reason="release already exists for upstream versions"
+          reason="upstream marker tag already exists"
 
           if [ "$FORCE_RELEASE" = "true" ]; then
             should_build=true
             reason="force=true"
-          elif ! gh release view "$TAG_NAME" --repo "$GH_REPO" >/dev/null 2>&1; then
+          elif ! gh api "repos/$GH_REPO/git/ref/tags/$UPSTREAM_TAG" >/dev/null 2>&1; then
             should_build=true
-            reason="release does not exist for upstream versions"
+            reason="upstream marker tag does not exist"
           fi
 
           echo "should_build=$should_build" >> "$GITHUB_OUTPUT"
@@ -211,6 +214,26 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push upstream marker tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          UPSTREAM_TAG: ${{ needs.check.outputs.upstream_tag }}
+        run: |
+          set -euo pipefail
+
+          if gh api "repos/$GH_REPO/git/ref/tags/$UPSTREAM_TAG" >/dev/null 2>&1; then
+            echo "Upstream marker tag already exists: $UPSTREAM_TAG"
+            exit 0
+          fi
+
+          gh api "repos/$GH_REPO/git/refs" \
+            --method POST \
+            --field ref="refs/tags/$UPSTREAM_TAG" \
+            --field sha="$GITHUB_SHA"
+
+          echo "Created upstream marker tag: $UPSTREAM_TAG"
 
       - name: Trigger Homebrew publish
         env:
